@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-08
+* **Update**: `AGENTS.md` imports `agents/core.md` and `agents/gtk-app.md` from phosh-toolkit instead of its whole `AGENTS.md`; repeated shared rules removed (toolkit decision "lean agent rules", to use fewer tokens per session).
 * **Update**: [Player controls](player-controls.md#autoplay-and-the-screen-turning-off), at the owner's request: Preferences → General → Playback has **Play Next Episode Automatically** (on by default) and **Keep Playing With Screen Off** (off by default). The first is also a switch on top of the player's sheet, which becomes **Playback Settings** (`settings_sheet.py`, formerly `track_sheet.py`; gear button in the header, shown also for an episode with a next one), as in Crunchyroll's player settings (owner). Off, there is no up-next card and the player closes at the end. With the second off, a playing video pauses when `Gtk.Application:screensaver-active` turns true (the app sets `register-session`; in the Flatpak GTK reads it from the Inhibit portal); new `ephyra/screen_off.py`, `tests/test_screen_off.py` and a UI test. Not yet checked on the phone.
 
 ## 2026-11-06
