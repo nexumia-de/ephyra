@@ -146,8 +146,8 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
         assert player.play_button in buttons and len(buttons) == 3
         run_until(lambda: all(b.get_mapped() and b.get_width() > 0 for b in buttons))
         assert all(tapped(b) for b in buttons)
-        player.open_tracks()
-        player.close_tracks()
+        player.open_settings()
+        player.close_settings()
         player._show_controls()
         run_until(lambda: not player.sheet.get_child_revealed())
         assert all(tapped(b) for b in buttons)
@@ -186,9 +186,9 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
         window.play(detail.item, 0)
         player = visible(window)
         run_until(lambda: player.media is not None and player.media.is_prepared(), 20)
-        assert player.tracks_button.get_visible()
+        assert player.settings_button.get_visible()
         assert player.stream.audio_index == 1 and player.stream.subtitle_index == -1
-        player.open_tracks()
+        player.open_settings()
         assert player.sheet.get_reveal_child()
         # The bars are drawn over the video: they stay hidden while the
         # sheet is open, also when playback events want to show them.
@@ -210,7 +210,7 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
         run_until(lambda: not player.subtitle_label.get_visible())
         # A choice closes the sheet, and so does a tap beside it.
         assert not player.sheet.get_reveal_child()
-        player.open_tracks()
+        player.open_settings()
         player._on_tap(None, 1, 1, 1)
         assert not player.sheet.get_reveal_child()
         window.nav.pop()
@@ -406,14 +406,14 @@ def test_player_never_leaves_a_transcode_running(app, demo, monkeypatch):
     window.destroy()
 
 
-def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
-    """Skip Intro seeks to the end of the intro, the end time shows next
-    to the duration, and at the credits the up-next card counts down to
-    the next episode, which replaces the player and keeps it turned
-    (docs/player-controls.md)."""
+EPISODE = "770b908b6aad4ce9da249cbe6fd219cd"     # S1:E6
+FOLLOWING = "290cd9a50691e695710c310a60ab9853"   # S2:E1
+
+
+def _episode_window(app, demo, monkeypatch):
+    """A signed-in phone-sized window and S1:E6, whose 30 s clip has an
+    intro (0–10 s) and credits (24 s to the end)."""
     from ephyra import keyring
-    from ephyra.player import PlayerPage
-    from ephyra.upnext import COUNTDOWN
     from ephyra.window import Window
     monkeypatch.setattr(router.network, "current_ssids", lambda: None)
     store = settings.Store()
@@ -431,14 +431,24 @@ def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
     # A phone held upright: the player can turn itself sideways.
     window.set_default_size(360, 720)
     window.present()
-    episode = demo.items["770b908b6aad4ce9da249cbe6fd219cd"]     # S1:E6
-    following = "290cd9a50691e695710c310a60ab9853"              # S2:E1
+    episode = demo.items[EPISODE]
     ticks = 10_000_000
-    # The clip is 30 s long: intro 0–10 s, credits 24 s to the end.
     demo.segments[episode["Id"]] = [
         {"Type": "Intro", "StartTicks": 0, "EndTicks": 10 * ticks},
         {"Type": "Outro", "StartTicks": 24 * ticks, "EndTicks": 30 * ticks}]
     demo.media = TRACKS.read_bytes()
+    return window, episode
+
+
+def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
+    """Skip Intro seeks to the end of the intro, the end time shows next
+    to the duration, and at the credits the up-next card counts down to
+    the next episode, which replaces the player and keeps it turned
+    (docs/player-controls.md)."""
+    from ephyra.player import PlayerPage
+    from ephyra.upnext import COUNTDOWN
+    window, episode = _episode_window(app, demo, monkeypatch)
+    following = FOLLOWING
 
     with owning_main_context():
         window.play(episode, 0)
@@ -488,4 +498,56 @@ def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
         run_until(lambda: nxt.started, 20)
         window.nav.pop()
         run_until(lambda: nxt.stopped)
+    window.destroy()
+
+
+def test_auto_next_off_in_the_player_and_the_preferences(app, demo, monkeypatch):
+    """The Autoplay switch in the player's settings sheet and the
+    preference are one setting: off, no card at the credits (Skip Credits
+    instead) and the player closes at the end (docs/player-controls.md)."""
+    from ephyra.preferences import PreferencesDialog
+    window, episode = _episode_window(app, demo, monkeypatch)
+    account = window.connection.account
+    assert account.auto_next and not account.play_screen_off
+
+    with owning_main_context():
+        window.play(episode, 0)
+        player = visible(window)
+        skipper = player.skipper
+        run_until(lambda: player.started and skipper.next_episode is not None, 20)
+        player.media.pause()
+        # Playback Settings: autoplay on top, also for a clip without
+        # other tracks.
+        assert player.settings_button.get_visible()
+        player.seek_to(25)
+        run_until(lambda: skipper.card.shown, 20)
+        player.open_settings()
+        assert player.sheet.is_open and not player.view.get_reveal_bottom_bars()
+        [row] = player.sheet._switch_rows
+        assert row.get_title() == "Autoplay Next Episode" and row.get_active()
+
+        row.set_active(False)
+        assert not account.auto_next
+        assert settings.Store().load().auto_next is False
+        assert not skipper.card.shown and not skipper.wants_next()
+        run_until(lambda: skipper.skip_revealer.get_reveal_child())
+        assert skipper.button.get_label() == "Skip Credits"
+        # The Next Episode button still plays it on request.
+        assert player.next_button.get_visible()
+        player.close_settings()
+
+        # The video ends: the player closes instead of going on.
+        player.media.play()
+        run_until(lambda: player.stopped, 30)
+        assert not any(isinstance(window.nav.get_navigation_stack().get_item(i),
+                                  type(player))
+                       for i in range(window.nav.get_navigation_stack().get_n_items()))
+
+    dialog = PreferencesDialog(window)
+    assert not dialog.auto_next_row.get_active()
+    assert not dialog.screen_off_row.get_active()
+    dialog.auto_next_row.set_active(True)
+    dialog.screen_off_row.set_active(True)
+    stored = settings.Store().load()
+    assert stored.auto_next and stored.play_screen_off
     window.destroy()

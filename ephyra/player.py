@@ -11,11 +11,12 @@ from phosh_toolkit.media import Media
 
 from ephyra import images, playback, text, widgets
 from ephyra.rotator import Rotator
+from ephyra.screen_off import ScreenOffPause
 from ephyra.sessions import Sessions
 from ephyra.skipper import Skipper
 from ephyra.subtitle_view import SubtitleView
 from ephyra.taps import SeekBubbles, tap_action, tap_zone  # noqa: F401 (tests)
-from ephyra.track_sheet import TrackSheet
+from ephyra.settings_sheet import SettingsSheet
 
 log = logging.getLogger("ephyra.player")
 
@@ -88,9 +89,10 @@ class PlayerPage(Adw.NavigationPage):
         # Skip Intro / Credits and the next episode, bottom right.
         self.skipper = Skipper(window.images, self.seek_to, self.play_next,
                                lambda: self.overlay.get_width())
+        self.skipper.auto_next = self.conn.account.auto_next
         for widget in self.skipper.overlays:
             overlay.add_overlay(widget)
-        self.sheet = TrackSheet(self.close_tracks)
+        self.sheet = SettingsSheet(self.close_settings)
         overlay.add_overlay(self.sheet)
         self.overlay = overlay
         self.stack.add_named(overlay, "video")
@@ -120,13 +122,15 @@ class PlayerPage(Adw.NavigationPage):
                                         visible=self.is_video)
         self.rotate_button.connect("clicked", lambda *_: self.toggle_rotation())
         header.pack_end(self.rotate_button)
-        self.tracks_button = Gtk.Button(icon_name="media-view-subtitles-symbolic",
-                                        tooltip_text="Audio and Subtitles",
-                                        visible=False)
-        self.tracks_button.update_property([Gtk.AccessibleProperty.LABEL],
-                                           ["Audio and Subtitles"])
-        self.tracks_button.connect("clicked", lambda *_: self.open_tracks())
-        header.pack_end(self.tracks_button)
+        # Autoplay, audio and subtitles in one sheet, as in streaming apps'
+        # settings menus (docs/player-controls.md#playback-settings).
+        self.settings_button = Gtk.Button(icon_name="emblem-system-symbolic",
+                                          tooltip_text="Playback Settings",
+                                          visible=False)
+        self.settings_button.update_property([Gtk.AccessibleProperty.LABEL],
+                                             ["Playback Settings"])
+        self.settings_button.connect("clicked", lambda *_: self.open_settings())
+        header.pack_end(self.settings_button)
         self.view.add_top_bar(header)
         self.view.add_bottom_bar(self._controls())
         self.rotator = Rotator(self.view)
@@ -147,6 +151,10 @@ class PlayerPage(Adw.NavigationPage):
         keys.connect("key-pressed", self._on_key)
         self.add_controller(keys)
         self.connect("hidden", self._on_hidden)
+        self.screen_off = ScreenOffPause(
+            window.get_application(),
+            lambda: not self.is_video or self.conn.account.play_screen_off,
+            self._pause_for_screen_off)
         self._fullscreen_handler = window.connect("notify::fullscreened",
                                                   self._on_fullscreened)
         self.prepare()
@@ -237,11 +245,15 @@ class PlayerPage(Adw.NavigationPage):
         return (playback.audio_tracks(self.stream.source),
                 playback.subtitle_tracks(self.stream.source))
 
-    def _update_tracks_button(self):
+    def _update_settings_button(self):
         audio, subtitles = self._tracks()
-        self.tracks_button.set_visible(len(audio) > 1 or bool(subtitles))
+        self.settings_button.set_visible(len(audio) > 1 or bool(subtitles)
+                                         or self._has_next())
 
-    def open_tracks(self):
+    def _has_next(self):
+        return self.is_video and self.skipper.next_episode is not None
+
+    def open_settings(self):
         audio, subtitles = self._tracks()
         groups = []
         if len(audio) > 1:
@@ -253,11 +265,15 @@ class PlayerPage(Adw.NavigationPage):
                 current = -1
             groups.append(("Subtitles", [(-1, "Off")] + subtitles, current,
                            self.choose_subtitle))
+        switches = []
+        if self._has_next():
+            switches.append(("Autoplay Next Episode", self.skipper.auto_next,
+                             self.set_auto_next))
         self._hide_controls()
         # Side by side when there is room (landscape), stacked otherwise.
-        self.sheet.open(groups, self.overlay.get_width() >= 600)
+        self.sheet.open(groups, self.overlay.get_width() >= 600, switches)
 
-    def close_tracks(self):
+    def close_settings(self):
         self.sheet.close()
         self._show_controls()
 
@@ -266,7 +282,7 @@ class PlayerPage(Adw.NavigationPage):
         if stream is None or index == stream.audio_index:
             return
         self.audio_index = index
-        self.close_tracks()
+        self.close_settings()
         if stream.method != playback.TRANSCODE:
             # The file has every track: switch inside GStreamer.
             stream.audio_index = index
@@ -291,7 +307,7 @@ class PlayerPage(Adw.NavigationPage):
                   wanted, burned)
         # The sheet covers the bottom of the video, where the subtitle
         # shows: close it on a choice.
-        self.close_tracks()
+        self.close_settings()
         if burned or wanted == "Encode":
             # Burned into the picture by the server, or no longer.
             self._reload()
@@ -347,7 +363,7 @@ class PlayerPage(Adw.NavigationPage):
             self._show_cover()
         self._start_media()
         self.subtitle_view.load(self.stream)
-        self._update_tracks_button()
+        self._update_settings_button()
         if not self._timers:
             self._timers.append(GLib.timeout_add_seconds(REPORT_EVERY,
                                                          self._report_progress))
@@ -523,7 +539,9 @@ class PlayerPage(Adw.NavigationPage):
         """Segments and the next episode arrived."""
         if self.stopped:
             return
-        self.next_button.set_visible(self.skipper.next_episode is not None)
+        has_next = self.skipper.next_episode is not None
+        self.next_button.set_visible(has_next)
+        self._update_settings_button()
         if self.started:
             self.skipper.update(self.position(), self.duration())
 
@@ -544,6 +562,22 @@ class PlayerPage(Adw.NavigationPage):
         self._on_hidden()
         self.window.play_instead(self, episode, rotated=rotated,
                                  rotation_fullscreen=rotation_fullscreen)
+
+    def set_auto_next(self, on):
+        """The switch in the settings sheet: the same setting as in the
+        preferences, kept for the next videos."""
+        account = self.conn.account
+        if on != account.auto_next:
+            account.auto_next = on
+            self.conn.save()
+        self.skipper.auto_next = on
+        if self.started:
+            self.skipper.update(self.position(), self.duration())
+
+    def _pause_for_screen_off(self):
+        if self.media and self.media.get_playing():
+            log.info("screen off: pausing")
+            self.media.set_playing(False)
 
     # --- controls ------------------------------------------------------
 
@@ -620,7 +654,7 @@ class PlayerPage(Adw.NavigationPage):
         if self.sheet.is_open:
             # A tap beside the open track sheet closes it.
             if not self.sheet.holds(self.overlay.pick(x, y, Gtk.PickFlags.DEFAULT)):
-                self.close_tracks()
+                self.close_settings()
             return
         device = gesture.get_current_event_device()
         touch = (device is not None and
@@ -714,7 +748,7 @@ class PlayerPage(Adw.NavigationPage):
         elif keyval in (Gdk.KEY_f, Gdk.KEY_F11):
             self.toggle_fullscreen()
         elif keyval == Gdk.KEY_Escape and self.sheet.is_open:
-            self.close_tracks()
+            self.close_settings()
         elif keyval == Gdk.KEY_Escape and self.window.is_fullscreen():
             self.toggle_fullscreen()
         else:
@@ -759,7 +793,7 @@ class PlayerPage(Adw.NavigationPage):
         self._stop_media()
         self.stream = None
         self.started = False
-        self.tracks_button.set_visible(False)
+        self.settings_button.set_visible(False)
         return (stream, position, not started) if stream else None
 
     def _stop_stream(self):
@@ -779,6 +813,7 @@ class PlayerPage(Adw.NavigationPage):
         self._hide_timeout = self._single_tap = 0
         self.seek_bubbles.stop()
         self.subtitle_view.stop()
+        self.screen_off.stop()
         if self._inhibit:
             self.window.get_application().uninhibit(self._inhibit)
         self.window.disconnect(self._fullscreen_handler)

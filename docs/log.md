@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-08
+* **Update**: [Player controls](player-controls.md#autoplay-and-the-screen-turning-off), at the owner's request: Preferences → General → Playback has **Play Next Episode Automatically** (on by default) and **Keep Playing With Screen Off** (off by default). The first is also a switch on top of the player's sheet, which becomes **Playback Settings** (`settings_sheet.py`, formerly `track_sheet.py`; gear button in the header, shown also for an episode with a next one), as in Crunchyroll's player settings (owner). Off, there is no up-next card and the player closes at the end. With the second off, a playing video pauses when `Gtk.Application:screensaver-active` turns true (the app sets `register-session`; in the Flatpak GTK reads it from the Inhibit portal); new `ephyra/screen_off.py`, `tests/test_screen_off.py` and a UI test. Not yet checked on the phone.
+
 ## 2026-11-06
 * **Update**: [App name](decisions/app-name.md): the owner chose the visible name **Home Cinema** (#25). `.desktop` `Name` (plus `GenericName=Media Player` and the keyword `ephyra`), metainfo `<name>`, window title, About dialog, welcome page and sign-out text say Home Cinema, the nightly "Home Cinema (Nightly)"; repository, app id, package, docs, the Jellyfin client name and the `User-Agent` keep the code name Ephyra.
 

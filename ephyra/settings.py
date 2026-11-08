@@ -35,6 +35,10 @@ class Account:
     quality_home: int = 0
     quality_away: int = 4_000_000
     style: str = "system"
+    # Up-next countdown and the next episode at the end (docs/player-controls.md).
+    auto_next: bool = True
+    # Videos go on playing while the screen is off; off pauses them.
+    play_screen_off: bool = False
 
     @property
     def signed_in(self):

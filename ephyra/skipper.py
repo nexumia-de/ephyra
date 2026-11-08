@@ -29,6 +29,7 @@ class Skipper:
         self.segments = []
         self.next_episode = None
         self.cancelled = False    # Cancel on the card: no next episode this time
+        self.auto_next = True     # off: no card, the player closes at the end
         self.segment = None       # the one the button would skip
 
         self.button = Gtk.Button(label="")
@@ -77,7 +78,7 @@ class Skipper:
     # --- state ---------------------------------------------------------
 
     def up_next_due(self, position, duration):
-        if self.next_episode is None:
+        if self.next_episode is None or not self.auto_next:
             return False
         start = segments.up_next_from(self.segments, duration)
         return start is not None and position >= start
@@ -110,7 +111,8 @@ class Skipper:
 
     def wants_next(self):
         """At the end of the item: go on to the next episode?"""
-        return self.next_episode is not None and not self.cancelled
+        return (self.next_episode is not None and self.auto_next
+                and not self.cancelled)
 
     def skip(self):
         if self.segment is not None:
