@@ -1,8 +1,8 @@
 ---
 type: Concept
 title: Player controls
-description: Touch and mouse controls of the video player as phone streaming apps have them - double tap on the sides to seek, big buttons in the middle, a button that turns the player sideways for a portrait phone, the end time, Skip Intro / Skip Credits and the next episode with a countdown.
-tags: [player, controls, gestures, touch, rotation, segments, next-episode]
+description: Touch and mouse controls of the video player as phone streaming apps have them - double tap on the sides to seek, big buttons in the middle, a button that turns the player sideways for a portrait phone, the end time, Skip Intro / Skip Credits, the next episode with a countdown that can be turned off, and pausing when the screen turns off.
+tags: [player, controls, gestures, touch, rotation, segments, next-episode, autoplay, screen-off]
 resource: ../ephyra/player.py
 generated: { by: claude-code/2.1.318, at: 2026-11-05T08:30:00Z }
 sources:
@@ -18,6 +18,12 @@ sources:
   - id: phosh-rotation
     resource: https://gitlab.gnome.org/World/Phosh/phosh/-/blob/main/src/rotation-manager.c
     title: Phosh, rotation manager (orientation lock, monitor transform)
+  - id: gtk-screensaver
+    resource: https://docs.gtk.org/gtk4/property.Application.screensaver-active.html
+    title: GTK 4, Gtk.Application:screensaver-active (since 4.4, needs register-session)
+  - id: portal-inhibit
+    resource: https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Inhibit.html
+    title: XDG Desktop Portal, Inhibit.CreateMonitor and StateChanged (screensaver-active)
   - id: phosh-monitors
     resource: https://gitlab.gnome.org/World/Phosh/phosh/-/blob/main/src/monitor-manager.c
     title: Phosh, monitor manager (org.gnome.Mutter.DisplayConfig, ApplyMonitorsConfig)
@@ -103,6 +109,42 @@ shows when), `ephyra/upnext.py` (the card), `Window.play_instead`.
   ran). The rotation is carried over only while the window is portrait,
   the only case the rotate button is offered in.
 
+# Autoplay and the screen turning off
+
+Code: `Account.auto_next` and `Account.play_screen_off`
+(`ephyra/settings.py`), Preferences → General → **Playback**,
+`Skipper.auto_next`, `ephyra/screen_off.py`.
+
+- **Play Next Episode Automatically** (on by default, as before): with
+  it off there is no up-next card, Skip Credits shows over the credits
+  instead, and the player closes at the end. The Next Episode button
+  in the header still plays the next one on request.
+- The same setting is a toggle button in the player
+  (`media-playlist-consecutive-symbolic`, pressed while on) in the
+  middle of the time row of the bottom bar, shown for an episode with a
+  next one. Not in the header: with back, Audio and Subtitles, Rotate,
+  Next Episode and Fullscreen it already needs 355 of 360 px (measured
+  under Xvfb, GTK 4.14, libadwaita 1.5); with a sixth button 395 px.
+  Changing it there saves the preference, shows a toast ("Autoplay on",
+  "Autoplay off"; the longer wording was cut off at 360 px) and takes
+  effect at once (the card goes away or comes back).
+- **Keep Playing With Screen Off** (off by default, the owner's choice):
+  off, a playing video pauses when the screen turns off and stays paused
+  until Play is pressed. Music always plays on. While the player is open
+  Ephyra inhibits idle and suspend, so the screen only turns off by the
+  power button.
+- How the screen state is known: `Gtk.Application:screensaver-active`,
+  which GTK tracks only with `register-session` set[^gtk-screensaver];
+  the application sets it. Outside a sandbox GTK follows
+  `org.gnome.ScreenSaver`, in the Flatpak the Inhibit portal's
+  monitor (`StateChanged` with `screensaver-active`)[^portal-inhibit],
+  so no extra `--talk-name` is needed. Phosh implements
+  `org.gnome.ScreenSaver`; whether its power-button blank sets it
+  active is not yet checked on the phone.
+- With the setting on, GStreamer goes on decoding the picture while
+  the screen is off; dropping the video track then would save battery
+  but is not done.
+
 # Audio and subtitles
 
 The header's **Audio and Subtitles** button (video only, shown when
@@ -177,7 +219,18 @@ it back. Decision: [rotate in the app](decisions/rotate-in-app.md).
   card (the header bar does not show in Broadway screenshots of the
   player, also on `main`).
 
+- 2026-11-08, cloud container (GTK 4.14, libadwaita 1.5): the UI test
+  turns autoplay off in the player (card gone, Skip Credits shown, the
+  player closes at the end, the preference saved) and checks the
+  preference rows; `tests/test_screen_off.py` checks the pause with a
+  stand-in for the application's property. Preferences screenshot at
+  360×720; the bottom bar with the toggle rendered at 360×720 under Xvfb.
+
 # Open
+
+- On the phone: does the power button make `screensaver-active` true
+  (through the portal in the Flatpak), so the video pauses; and does a
+  video kept playing go on with the screen off.
 
 - On the phone: the countdown and the switch to the next episode with a
   real server and the intro skipper plugin's segments.

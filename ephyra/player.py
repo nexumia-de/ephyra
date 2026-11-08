@@ -11,6 +11,7 @@ from phosh_toolkit.media import Media
 
 from ephyra import images, playback, text, widgets
 from ephyra.rotator import Rotator
+from ephyra.screen_off import ScreenOffPause
 from ephyra.sessions import Sessions
 from ephyra.skipper import Skipper
 from ephyra.subtitle_view import SubtitleView
@@ -88,6 +89,7 @@ class PlayerPage(Adw.NavigationPage):
         # Skip Intro / Credits and the next episode, bottom right.
         self.skipper = Skipper(window.images, self.seek_to, self.play_next,
                                lambda: self.overlay.get_width())
+        self.skipper.auto_next = self.conn.account.auto_next
         for widget in self.skipper.overlays:
             overlay.add_overlay(widget)
         self.sheet = TrackSheet(self.close_tracks)
@@ -147,6 +149,10 @@ class PlayerPage(Adw.NavigationPage):
         keys.connect("key-pressed", self._on_key)
         self.add_controller(keys)
         self.connect("hidden", self._on_hidden)
+        self.screen_off = ScreenOffPause(
+            window.get_application(),
+            lambda: not self.is_video or self.conn.account.play_screen_off,
+            self._pause_for_screen_off)
         self._fullscreen_handler = window.connect("notify::fullscreened",
                                                   self._on_fullscreened)
         self.prepare()
@@ -201,6 +207,19 @@ class PlayerPage(Adw.NavigationPage):
         row.set_start_widget(self.position_label)
         if not self.is_video:
             row.set_center_widget(self.transport)
+        else:
+            # The same setting as in the preferences, at hand while
+            # watching; in the bar, as the header is full at 360 px.
+            self.auto_next_button = Gtk.ToggleButton(
+                icon_name="media-playlist-consecutive-symbolic",
+                tooltip_text="Play Next Episode Automatically",
+                active=self.conn.account.auto_next, visible=False)
+            self.auto_next_button.add_css_class("flat")
+            self.auto_next_button.update_property(
+                [Gtk.AccessibleProperty.LABEL],
+                ["Play Next Episode Automatically"])
+            self.auto_next_button.connect("toggled", self._on_auto_next)
+            row.set_center_widget(self.auto_next_button)
         row.set_end_widget(end)
         bar.append(row)
         return bar
@@ -523,7 +542,10 @@ class PlayerPage(Adw.NavigationPage):
         """Segments and the next episode arrived."""
         if self.stopped:
             return
-        self.next_button.set_visible(self.skipper.next_episode is not None)
+        has_next = self.skipper.next_episode is not None
+        self.next_button.set_visible(has_next)
+        if self.is_video:
+            self.auto_next_button.set_visible(has_next)
         if self.started:
             self.skipper.update(self.position(), self.duration())
 
@@ -544,6 +566,23 @@ class PlayerPage(Adw.NavigationPage):
         self._on_hidden()
         self.window.play_instead(self, episode, rotated=rotated,
                                  rotation_fullscreen=rotation_fullscreen)
+
+    def _on_auto_next(self, button):
+        on = button.get_active()
+        account = self.conn.account
+        if on != account.auto_next:
+            account.auto_next = on
+            self.conn.save()
+            self.window.toast("Autoplay on" if on else "Autoplay off")
+        self.skipper.auto_next = on
+        if self.started:
+            self.skipper.update(self.position(), self.duration())
+        self._show_controls()
+
+    def _pause_for_screen_off(self):
+        if self.media and self.media.get_playing():
+            log.info("screen off: pausing")
+            self.media.set_playing(False)
 
     # --- controls ------------------------------------------------------
 
@@ -779,6 +818,7 @@ class PlayerPage(Adw.NavigationPage):
         self._hide_timeout = self._single_tap = 0
         self.seek_bubbles.stop()
         self.subtitle_view.stop()
+        self.screen_off.stop()
         if self._inhibit:
             self.window.get_application().uninhibit(self._inhibit)
         self.window.disconnect(self._fullscreen_handler)

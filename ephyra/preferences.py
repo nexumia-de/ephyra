@@ -1,5 +1,5 @@
 """Preferences: connection (the setup form), playback quality per route,
-and the account."""
+playback behaviour and the account."""
 from gi.repository import Adw, GLib, Gtk
 from phosh_toolkit.style import style_row
 
@@ -50,6 +50,21 @@ class PreferencesDialog(Adw.PreferencesDialog):
             row.connect("notify::selected", self._on_quality, attr, values)
             quality.add(row)
         general_page.add(quality)
+        playing = Adw.PreferencesGroup(title="Playback")
+        self.auto_next_row = Adw.SwitchRow(
+            title="Play Next Episode Automatically",
+            subtitle="Count down at the credits, then start the next episode",
+            active=account.auto_next)
+        self.auto_next_row.connect("notify::active", self._on_switch, "auto_next")
+        playing.add(self.auto_next_row)
+        self.screen_off_row = Adw.SwitchRow(
+            title="Keep Playing With Screen Off",
+            subtitle="Otherwise videos pause when the screen turns off",
+            active=account.play_screen_off)
+        self.screen_off_row.connect("notify::active", self._on_switch,
+                                    "play_screen_off")
+        playing.add(self.screen_off_row)
+        general_page.add(playing)
         # General first: style and quality change more often than the
         # connection.
         self.remove(connection_page)
@@ -77,6 +92,10 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
     def _on_quality(self, row, pspec, attr, values):
         setattr(self.window.connection.account, attr, values[row.get_selected()])
+        self.window.connection.save()
+
+    def _on_switch(self, row, pspec, attr):
+        setattr(self.window.connection.account, attr, row.get_active())
         self.window.connection.save()
 
     def _on_save(self, *_):

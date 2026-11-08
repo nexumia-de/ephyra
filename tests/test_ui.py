@@ -406,14 +406,14 @@ def test_player_never_leaves_a_transcode_running(app, demo, monkeypatch):
     window.destroy()
 
 
-def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
-    """Skip Intro seeks to the end of the intro, the end time shows next
-    to the duration, and at the credits the up-next card counts down to
-    the next episode, which replaces the player and keeps it turned
-    (docs/player-controls.md)."""
+EPISODE = "770b908b6aad4ce9da249cbe6fd219cd"     # S1:E6
+FOLLOWING = "290cd9a50691e695710c310a60ab9853"   # S2:E1
+
+
+def _episode_window(app, demo, monkeypatch):
+    """A signed-in phone-sized window and S1:E6, whose 30 s clip has an
+    intro (0–10 s) and credits (24 s to the end)."""
     from ephyra import keyring
-    from ephyra.player import PlayerPage
-    from ephyra.upnext import COUNTDOWN
     from ephyra.window import Window
     monkeypatch.setattr(router.network, "current_ssids", lambda: None)
     store = settings.Store()
@@ -431,14 +431,24 @@ def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
     # A phone held upright: the player can turn itself sideways.
     window.set_default_size(360, 720)
     window.present()
-    episode = demo.items["770b908b6aad4ce9da249cbe6fd219cd"]     # S1:E6
-    following = "290cd9a50691e695710c310a60ab9853"              # S2:E1
+    episode = demo.items[EPISODE]
     ticks = 10_000_000
-    # The clip is 30 s long: intro 0–10 s, credits 24 s to the end.
     demo.segments[episode["Id"]] = [
         {"Type": "Intro", "StartTicks": 0, "EndTicks": 10 * ticks},
         {"Type": "Outro", "StartTicks": 24 * ticks, "EndTicks": 30 * ticks}]
     demo.media = TRACKS.read_bytes()
+    return window, episode
+
+
+def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
+    """Skip Intro seeks to the end of the intro, the end time shows next
+    to the duration, and at the credits the up-next card counts down to
+    the next episode, which replaces the player and keeps it turned
+    (docs/player-controls.md)."""
+    from ephyra.player import PlayerPage
+    from ephyra.upnext import COUNTDOWN
+    window, episode = _episode_window(app, demo, monkeypatch)
+    following = FOLLOWING
 
     with owning_main_context():
         window.play(episode, 0)
@@ -488,4 +498,55 @@ def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
         run_until(lambda: nxt.started, 20)
         window.nav.pop()
         run_until(lambda: nxt.stopped)
+    window.destroy()
+
+
+def test_auto_next_off_in_the_player_and_the_preferences(app, demo, monkeypatch):
+    """The player's Play Next Episode Automatically button and the
+    preference are one setting: off, no card at the credits (Skip Credits
+    instead) and the player closes at the end (docs/player-controls.md)."""
+    from ephyra.preferences import PreferencesDialog
+    window, episode = _episode_window(app, demo, monkeypatch)
+    account = window.connection.account
+    assert account.auto_next and not account.play_screen_off
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+
+    with owning_main_context():
+        window.play(episode, 0)
+        player = visible(window)
+        skipper = player.skipper
+        run_until(lambda: player.started and skipper.next_episode is not None, 20)
+        player.media.pause()
+        assert player.auto_next_button.get_visible()
+        assert player.auto_next_button.get_active()
+        # In the bar, which still fits a phone held upright.
+        bar = player.auto_next_button.get_ancestor(Gtk.CenterBox)
+        assert bar.measure(Gtk.Orientation.HORIZONTAL, -1)[0] <= 360 - 12
+        player.seek_to(25)
+        run_until(lambda: skipper.card.shown, 20)
+
+        player.auto_next_button.set_active(False)
+        assert not account.auto_next and toasts
+        assert settings.Store().load().auto_next is False
+        assert not skipper.card.shown and not skipper.wants_next()
+        run_until(lambda: skipper.skip_revealer.get_reveal_child())
+        assert skipper.button.get_label() == "Skip Credits"
+        # The Next Episode button still plays it on request.
+        assert player.next_button.get_visible()
+
+        # The video ends: the player closes instead of going on.
+        player.media.play()
+        run_until(lambda: player.stopped, 30)
+        assert not any(isinstance(window.nav.get_navigation_stack().get_item(i),
+                                  type(player))
+                       for i in range(window.nav.get_navigation_stack().get_n_items()))
+
+    dialog = PreferencesDialog(window)
+    assert not dialog.auto_next_row.get_active()
+    assert not dialog.screen_off_row.get_active()
+    dialog.auto_next_row.set_active(True)
+    dialog.screen_off_row.set_active(True)
+    stored = settings.Store().load()
+    assert stored.auto_next and stored.play_screen_off
     window.destroy()

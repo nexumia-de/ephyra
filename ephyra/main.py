@@ -41,7 +41,10 @@ def demo_connection():
 class Application(Adw.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID,
-                         flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+                         flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
+                         # GTK tracks `screensaver-active` only then: the
+                         # player pauses videos when the screen goes off.
+                         register_session=True)
         self.connection = None
         for name, callback in (("about", self._on_about),
                                ("preferences", self._on_preferences),
