@@ -1,17 +1,15 @@
-@../phosh-toolkit/AGENTS.md
+@../phosh-toolkit/agents/core.md
+@../phosh-toolkit/agents/gtk-app.md
 
 # Ephyra
 
 Jellyfin client for Phosh phones (and the desktop), in the look of
-Jellyfin's own apps. The shared rules in ../phosh-toolkit/AGENTS.md apply
-as well, with the exceptions below.
+Jellyfin's own apps. Exceptions to the shared rules are below.
 
 ## Language
 
-- Reply to the owner in English, unless the owner asks for another
-  language; then keep using that language until told otherwise.
-- Everything in the repository stays English (code, docs, commits,
-  pull requests, issues).
+- Reply in English unless the owner asks for another language; then keep
+  that language until told otherwise.
 
 ## Design: Jellyfin's look
 
@@ -33,9 +31,7 @@ as well, with the exceptions below.
 - App id: `de.nexumia.Ephyra`. Visible name: **Home Cinema** (chosen by
   the owner on 2026-11-06, [decision](docs/decisions/app-name.md)); the
   code name Ephyra stays for the repository, app id, package and docs.
-- Plan: work items are [issues](https://github.com/nexumia-de/ephyra/issues)
-  in [milestones](https://github.com/nexumia-de/ephyra/milestones); goals
-  per milestone are in [docs/roadmap.md](docs/roadmap.md).
+- Plan: [milestones](https://github.com/nexumia-de/ephyra/milestones); goals in [docs/roadmap.md](docs/roadmap.md).
 - Connection: local address on the owner's home Wi-Fi, remote address
   elsewhere, the remote one behind mutual TLS. Read
   [docs/connection.md](docs/connection.md) before touching
