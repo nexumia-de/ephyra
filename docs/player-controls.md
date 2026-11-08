@@ -119,15 +119,13 @@ Code: `Account.auto_next` and `Account.play_screen_off`
   it off there is no up-next card, Skip Credits shows over the credits
   instead, and the player closes at the end. The Next Episode button
   in the header still plays the next one on request.
-- The same setting is a toggle button in the player
-  (`media-playlist-consecutive-symbolic`, pressed while on) in the
-  middle of the time row of the bottom bar, shown for an episode with a
-  next one. Not in the header: with back, Audio and Subtitles, Rotate,
-  Next Episode and Fullscreen it already needs 355 of 360 px (measured
-  under Xvfb, GTK 4.14, libadwaita 1.5); with a sixth button 395 px.
-  Changing it there saves the preference, shows a toast ("Autoplay on",
-  "Autoplay off"; the longer wording was cut off at 360 px) and takes
-  effect at once (the card goes away or comes back).
+- The same setting is the **Autoplay Next Episode** switch on top of
+  the player's [Playback Settings](#playback-settings) sheet, for an
+  episode with a next one, as streaming apps such as Crunchyroll keep
+  it in their player's settings menu (owner, 2026-11-08). Changing it
+  there saves the preference and takes effect at once (the card goes
+  away or comes back). A first version had a toggle button in the
+  bottom bar; the owner preferred the settings sheet.
 - **Keep Playing With Screen Off** (off by default, the owner's choice):
   off, a playing video pauses when the screen turns off and stays paused
   until Play is pressed. Music always plays on. While the player is open
@@ -145,15 +143,18 @@ Code: `Account.auto_next` and `Account.play_screen_off`
   the screen is off; dropping the video track then would save battery
   but is not done.
 
-# Audio and subtitles
+# Playback settings
 
-The header's **Audio and Subtitles** button (video only, shown when
-there is more than one audio track or any subtitle) opens a sheet
-inside the player: radio rows for the audio tracks and for the
+The header's **Playback Settings** button (`emblem-system-symbolic`;
+video only, shown when there is more than one audio track, any
+subtitle, or a next episode) opens a sheet inside the player
+(`ephyra/settings_sheet.py`, formerly the Audio and Subtitles sheet):
+the Autoplay Next Episode switch on top across the whole width, then
+radio rows for the audio tracks and for the
 subtitles with **Off** first, titled with Jellyfin's `DisplayTitle`
 ("German - AC3 - 5.1"). Side by side when the player is at least
 600 px wide (turned phone, desktop), stacked otherwise; long lists
-scroll. A choice, a tap beside the sheet, its close button or Escape
+scroll. A track choice (not the switch), a tap beside the sheet, its close button or Escape
 closes it (it covers the bottom of the video, where the subtitle shows).
 While closed it takes no taps (`can_target` false): the closed revealer
 still covered the whole video and swallowed the taps meant for the
@@ -224,7 +225,12 @@ it back. Decision: [rotate in the app](decisions/rotate-in-app.md).
   player closes at the end, the preference saved) and checks the
   preference rows; `tests/test_screen_off.py` checks the pause with a
   stand-in for the application's property. Preferences screenshot at
-  360×720; the bottom bar with the toggle rendered at 360×720 under Xvfb.
+  360×720; the Playback Settings sheet rendered at 360×720 upright and
+  turned under Xvfb with Phosh's button layout (`:close`). Measured
+  there: the player's header needs 321 px with back, Playback Settings,
+  Rotate, Next Episode, Fullscreen and close; Xvfb's default layout
+  with minimize and maximize adds 74 px and overflows 360 px, which
+  Phosh does not show.
 
 # Open
 

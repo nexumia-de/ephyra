@@ -60,7 +60,7 @@ sources:
   once more with `SubtitleStreamIndex: -1` before playing
   (`sessions.fetch_stream`, `playback.burns_in_default`); decision:
   [no automatic burn-in](decisions/no-automatic-burn-in.md). The
-  player's **Audio and Subtitles** sheet asks again with the user's
+  player's **Playback Settings** sheet asks again with the user's
   choice (subtitle `-1` is off).
 - **MediaSourceId with every track choice**: the server uses
   `AudioStreamIndex` and `SubtitleStreamIndex` only when the request

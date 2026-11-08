@@ -1,9 +1,10 @@
-"""The Audio and Subtitles sheet that slides up inside the player
-(docs/player-controls.md#audio-and-subtitles)."""
+"""The Playback Settings sheet that slides up inside the player: switches
+such as autoplay, then the audio and subtitle tracks
+(docs/player-controls.md#playback-settings)."""
 from gi.repository import Adw, Gtk
 
 
-class TrackSheet(Gtk.Revealer):
+class SettingsSheet(Gtk.Revealer):
     """A sheet inside the player, not a popover: popovers are own surfaces
     and would not turn with the rotated player. `on_close()` is called
     by its close button."""
@@ -15,11 +16,15 @@ class TrackSheet(Gtk.Revealer):
         super().__init__(reveal_child=False, valign=Gtk.Align.FILL,
                          transition_type=Gtk.RevealerTransitionType.SLIDE_UP,
                          margin_top=48, can_target=False)
+        self.switches = Adw.PreferencesGroup(visible=False)
         self.list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        scrolled = Gtk.ScrolledWindow(child=self.list,
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        content.append(self.switches)
+        content.append(self.list)
+        scrolled = Gtk.ScrolledWindow(child=content,
                                       hscrollbar_policy=Gtk.PolicyType.NEVER,
                                       propagate_natural_height=True)
-        title = Gtk.Label(label="Audio and Subtitles", hexpand=True, xalign=0)
+        title = Gtk.Label(label="Playback Settings", hexpand=True, xalign=0)
         title.add_css_class("heading")
         close = Gtk.Button(icon_name="window-close-symbolic", tooltip_text="Close")
         close.update_property([Gtk.AccessibleProperty.LABEL], ["Close"])
@@ -37,6 +42,7 @@ class TrackSheet(Gtk.Revealer):
         self.box.append(top)
         self.box.append(scrolled)
         self.set_child(Adw.Clamp(child=self.box, maximum_size=760))
+        self._switch_rows = []
 
     @property
     def is_open(self):
@@ -47,11 +53,24 @@ class TrackSheet(Gtk.Revealer):
         return widget is not None and (widget is self.box or
                                        widget.is_ancestor(self.box))
 
-    def open(self, groups, wide):
-        """`groups`: (title, [(index, label)], current, callback); side by
-        side when `wide` (landscape), stacked otherwise."""
+    def open(self, groups, wide, switches=()):
+        """`switches`: (title, active, callback(active)), on top across the
+        whole width. `groups`: (title, [(index, label)], current,
+        callback); side by side when `wide` (landscape), stacked
+        otherwise."""
         while child := self.list.get_first_child():
             self.list.remove(child)
+        for row in self._switch_rows:
+            self.switches.remove(row)
+        self._switch_rows = []
+        for title, active, callback in switches:
+            row = Adw.SwitchRow(title=title, active=active)
+            row.connect("notify::active", lambda r, _p, c=callback:
+                        c(r.get_active()))
+            self.switches.add(row)
+            self._switch_rows.append(row)
+        self.switches.set_visible(bool(self._switch_rows))
+        self.list.set_visible(bool(groups))
         self.list.set_orientation(Gtk.Orientation.HORIZONTAL if wide
                                   else Gtk.Orientation.VERTICAL)
         self.list.set_homogeneous(wide)

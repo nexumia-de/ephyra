@@ -146,8 +146,8 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
         assert player.play_button in buttons and len(buttons) == 3
         run_until(lambda: all(b.get_mapped() and b.get_width() > 0 for b in buttons))
         assert all(tapped(b) for b in buttons)
-        player.open_tracks()
-        player.close_tracks()
+        player.open_settings()
+        player.close_settings()
         player._show_controls()
         run_until(lambda: not player.sheet.get_child_revealed())
         assert all(tapped(b) for b in buttons)
@@ -186,9 +186,9 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
         window.play(detail.item, 0)
         player = visible(window)
         run_until(lambda: player.media is not None and player.media.is_prepared(), 20)
-        assert player.tracks_button.get_visible()
+        assert player.settings_button.get_visible()
         assert player.stream.audio_index == 1 and player.stream.subtitle_index == -1
-        player.open_tracks()
+        player.open_settings()
         assert player.sheet.get_reveal_child()
         # The bars are drawn over the video: they stay hidden while the
         # sheet is open, also when playback events want to show them.
@@ -210,7 +210,7 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
         run_until(lambda: not player.subtitle_label.get_visible())
         # A choice closes the sheet, and so does a tap beside it.
         assert not player.sheet.get_reveal_child()
-        player.open_tracks()
+        player.open_settings()
         player._on_tap(None, 1, 1, 1)
         assert not player.sheet.get_reveal_child()
         window.nav.pop()
@@ -502,15 +502,13 @@ def test_skip_intro_end_time_and_next_episode(app, demo, monkeypatch):
 
 
 def test_auto_next_off_in_the_player_and_the_preferences(app, demo, monkeypatch):
-    """The player's Play Next Episode Automatically button and the
+    """The Autoplay switch in the player's settings sheet and the
     preference are one setting: off, no card at the credits (Skip Credits
     instead) and the player closes at the end (docs/player-controls.md)."""
     from ephyra.preferences import PreferencesDialog
     window, episode = _episode_window(app, demo, monkeypatch)
     account = window.connection.account
     assert account.auto_next and not account.play_screen_off
-    toasts = []
-    monkeypatch.setattr(window, "toast", toasts.append)
 
     with owning_main_context():
         window.play(episode, 0)
@@ -518,22 +516,25 @@ def test_auto_next_off_in_the_player_and_the_preferences(app, demo, monkeypatch)
         skipper = player.skipper
         run_until(lambda: player.started and skipper.next_episode is not None, 20)
         player.media.pause()
-        assert player.auto_next_button.get_visible()
-        assert player.auto_next_button.get_active()
-        # In the bar, which still fits a phone held upright.
-        bar = player.auto_next_button.get_ancestor(Gtk.CenterBox)
-        assert bar.measure(Gtk.Orientation.HORIZONTAL, -1)[0] <= 360 - 12
+        # Playback Settings: autoplay on top, also for a clip without
+        # other tracks.
+        assert player.settings_button.get_visible()
         player.seek_to(25)
         run_until(lambda: skipper.card.shown, 20)
+        player.open_settings()
+        assert player.sheet.is_open and not player.view.get_reveal_bottom_bars()
+        [row] = player.sheet._switch_rows
+        assert row.get_title() == "Autoplay Next Episode" and row.get_active()
 
-        player.auto_next_button.set_active(False)
-        assert not account.auto_next and toasts
+        row.set_active(False)
+        assert not account.auto_next
         assert settings.Store().load().auto_next is False
         assert not skipper.card.shown and not skipper.wants_next()
         run_until(lambda: skipper.skip_revealer.get_reveal_child())
         assert skipper.button.get_label() == "Skip Credits"
         # The Next Episode button still plays it on request.
         assert player.next_button.get_visible()
+        player.close_settings()
 
         # The video ends: the player closes instead of going on.
         player.media.play()
