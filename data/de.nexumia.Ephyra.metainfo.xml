@@ -48,7 +48,52 @@
     <control>touch</control>
     <internet>always</internet>
   </supports>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Continue watching, next episodes and the newest movies</caption>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/home-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Continue watching, next episodes and the newest movies</caption>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/home-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A movie library</caption>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/movies-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A movie library</caption>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/movies-desktop-light.png</image>
+    </screenshot>
+  </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-11-09">
+      <description>
+        <ul>
+          <li>Choose the audio track and subtitles while watching; text subtitles show over the video and picture subtitles are burned in by the server.</li>
+          <li>Autoplay of the next episode can be turned off in the preferences and in the player's new Playback Settings.</li>
+          <li>The player shows when the video ends, skips intros and credits that the server has marked, and goes on to the next episode with a button or after a short countdown.</li>
+          <li>Videos pause when the screen turns off; a new preference keeps them playing.</li>
+          <li>Double tap the left or right side of a video to skip back or forward, use the large buttons in the middle, or turn the video to landscape with the new rotate button.</li>
+          <li>Servers behind a reverse proxy with its own login (such as Pangolin, Authelia or Authentik) work: Ephyra shows the proxy's login page and keeps the session.</li>
+          <li>Choose a light or dark style in the preferences, or follow the system style, which Ephyra now does by default.</li>
+          <li>While the server converts a video, the player says “Converting on the server…”.</li>
+          <li>The app is now called Home Cinema.</li>
+          <li>Addresses typed without http:// or https:// now always use https://.</li>
+          <li>Picture subtitles (PGS, DVD) are no longer turned on by themselves, because the server has to convert the whole video for them; they can still be chosen and are marked “converted on the server”.</li>
+          <li>When a video can’t be played, the error page shows a short reason and a details line with the file’s format and the server’s answer that you can copy into a bug report.</li>
+          <li>Blu-ray remuxes with TrueHD or DTS audio now play directly instead of being converted on the server.</li>
+          <li>The play, back and forward buttons in the middle of a video work again.</li>
+          <li>Japanese, Chinese and Korean titles, descriptions and subtitles are shown instead of empty boxes.</li>
+          <li>When a video can’t be played, Ephyra says whether your Jellyfin user may have videos converted, and “Convert on the Server” now converts the whole video.</li>
+          <li>Videos and music now play in the app on the phone; before, playback stopped with “Failed to pause”.</li>
+          <li>Leaving the home Wi-Fi while Ephyra runs now switches to the remote address right away, and a playing video continues through it.</li>
+          <li>Ephyra now always tells the server to stop converting a video when you leave the player, switch tracks or retry, also while the video is still loading, so no conversions keep running on the server.</li>
+          <li>Choosing another subtitle or audio track no longer jumps back to the previous choice when the server has to prepare the video again.</li>
+          <li>The audio and subtitle choice is no longer covered by the timeline.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-11-03">
       <description>
         <p>First version: sign in to a Jellyfin server, browse the libraries and play movies, episodes and music.</p>
