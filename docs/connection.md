@@ -133,7 +133,7 @@ kept in the account file as `certificate_hosts` and passed by
 `test_proxy_login_opens_the_login_page`). The connection form's own login
 during setup does not take extra hosts yet: toolkit `ConnectionForm`
 passes none to `make_page`, so on the first connect such an identity
-provider gets no certificate (toolkit issue, see `docs/log.md`).
+provider gets no certificate (nexumia-de/phosh-toolkit#52).
 
 # Sign-in and secrets
 
