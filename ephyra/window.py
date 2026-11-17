@@ -123,7 +123,9 @@ class Window(Adw.ApplicationWindow):
         if connection.signed_in:
             proxy_login.sign_in(self.nav, connection, connection.jellyfin.http,
                                 connection.proxy_cookies,
-                                connection_module.probe_through, url)
+                                connection_module.probe_through, url,
+                                certificate_hosts_extra=connection.account
+                                .certificate_hosts)
 
     def _on_signed_out(self, *_):
         self.show_setup()

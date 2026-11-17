@@ -2,8 +2,10 @@
 ids, playback quality. Secrets (access token, certificate password) are in
 the keyring (ephyra/keyring.py), the client certificate is a private copy
 in the data directory (phosh_toolkit.certificate). No GTK."""
+import re
 import uuid
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from phosh_toolkit.certificate import CertificateFile
 from phosh_toolkit.settings import JsonStore, app_dir
@@ -27,6 +29,9 @@ class Account:
     local_url: str = ""
     home_networks: list = field(default_factory=list)
     certificate: bool = False
+    # Hosts besides the server's that get the client certificate in the
+    # proxy-login web view, e.g. the identity provider's (docs/connection.md).
+    certificate_hosts: list = field(default_factory=list)
     server_id: str = ""
     server_name: str = ""
     user_id: str = ""
@@ -70,3 +75,16 @@ class Store(JsonStore):
 def certificates():
     """The saved client certificate and its password in the keyring."""
     return CertificateFile(certificate_path(), keyring.KEYRING)
+
+
+def parse_hosts(text):
+    """Host names from text the user typed: separated by commas or
+    spaces, addresses reduced to their host, lower case, no duplicates."""
+    hosts = []
+    for word in re.split(r"[\s,]+", text):
+        if not word:
+            continue
+        host = urlsplit(word if "//" in word else "//" + word).hostname
+        if host and host not in hosts:
+            hosts.append(host)
+    return hosts

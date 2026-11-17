@@ -1,4 +1,5 @@
-"""Preferences: connection (the setup form), playback quality per route,
+"""Preferences: connection (the setup form and the proxy login's extra
+certificate hosts), playback quality per route,
 playback behaviour and the account."""
 from gi.repository import Adw, GLib, Gtk
 from phosh_toolkit.style import style_row
@@ -19,6 +20,18 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self.form = connection_form(window, account, toast=self.toast)
         for group in self.form.groups:
             connection_page.add(group)
+        login = Adw.PreferencesGroup(
+            title="Proxy Login",
+            description="If the login page of your reverse proxy is on "
+                        "another host behind the same client certificate, "
+                        "enter that host here, e.g. auth.example.org.")
+        self.hosts_row = Adw.EntryRow(
+            title="Other Hosts for the Certificate",
+            text=", ".join(account.certificate_hosts),
+            show_apply_button=True, input_purpose=Gtk.InputPurpose.URL)
+        self.hosts_row.connect("apply", self._on_hosts)
+        login.add(self.hosts_row)
+        connection_page.add(login)
         actions = Adw.PreferencesGroup()
         self.save = Gtk.Button(label="Save and Reconnect",
                                halign=Gtk.Align.CENTER)
@@ -98,6 +111,13 @@ class PreferencesDialog(Adw.PreferencesDialog):
         setattr(self.window.connection.account, attr, row.get_active())
         self.window.connection.save()
 
+    def _on_hosts(self, row):
+        hosts = settings.parse_hosts(row.get_text())
+        self.window.connection.account.certificate_hosts = hosts
+        self.window.connection.save()
+        row.set_text(", ".join(hosts))
+        self.toast("Saved")
+
     def _on_save(self, *_):
         conn = self.window.connection
 
@@ -111,6 +131,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
                            "use it.")
                 return
             self.form.apply(conn.account)
+            conn.account.certificate_hosts = settings.parse_hosts(
+                self.hosts_row.get_text())
             conn.save()
             conn.load_certificate()
             conn.jellyfin.base_url = ""
