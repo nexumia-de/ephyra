@@ -120,6 +120,21 @@ The proxy's cookies are kept in the keyring (kind `proxy-cookies`) and
 loaded by `Connection`; they go only to the server's address, also for
 playback through the media proxy.
 
+Since phosh-toolkit `v0.4.0` the web view gives the client certificate
+only to the server's host and to `certificate_hosts_extra`; any other
+host that asks for it gets none and its request is cancelled. A login
+whose identity provider is on another host behind the same mutual TLS
+(Pangolin's or Authelia's page on `auth.example.org`, Jellyfin on
+`media.example.org`) needs that host listed: Preferences → Connection →
+**Proxy Login** → *Other Hosts for the Certificate* (comma- or
+space-separated; addresses are reduced to their host, lower case). It is
+kept in the account file as `certificate_hosts` and passed by
+`Window._on_proxy_login` (#33; tests `test_parse_hosts`,
+`test_proxy_login_opens_the_login_page`). The connection form's own login
+during setup does not take extra hosts yet: toolkit `ConnectionForm`
+passes none to `make_page`, so on the first connect such an identity
+provider gets no certificate (toolkit issue, see `docs/log.md`).
+
 # Sign-in and secrets
 
 `POST /Users/AuthenticateByName` with the `Authorization: MediaBrowser

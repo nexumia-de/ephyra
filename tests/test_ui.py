@@ -268,15 +268,28 @@ def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
     account.remote_url = demo.url
     account.server_id = demo.library["server"]["Id"]
     account.user_id = demo.library["user"]["Id"]
+    account.certificate_hosts = ["auth.example.org"]
     store.save(account)
     keyring.store(keyring.TOKEN, "t")
     conn = connection.Connection(store, watch=False)
     assert conn.jellyfin.http.cookies == {origin(demo.url): "s=1"}
     calls = []
-    monkeypatch.setattr(proxy_login, "sign_in", lambda *a: calls.append(a))
+    monkeypatch.setattr(proxy_login, "sign_in",
+                        lambda *a, **kw: calls.append((a, kw)))
     window = Window(app, conn)
     conn.emit("proxy-login", demo.url + "/login")
-    assert calls and calls[0][0] is window.nav and calls[0][5] == demo.url + "/login"
+    args, kwargs = calls[0]
+    assert args[0] is window.nav and args[5] == demo.url + "/login"
+    # The identity provider's host gets the client certificate too (#33).
+    assert kwargs["certificate_hosts_extra"] == ["auth.example.org"]
+
+    from ephyra.preferences import PreferencesDialog
+    dialog = PreferencesDialog(window)
+    assert dialog.hosts_row.get_text() == "auth.example.org"
+    dialog.hosts_row.set_text("https://Login.example.org/x, auth.example.org")
+    dialog.hosts_row.emit("apply")
+    assert settings.Store().load().certificate_hosts == [
+        "login.example.org", "auth.example.org"]
     window.destroy()
 
 
