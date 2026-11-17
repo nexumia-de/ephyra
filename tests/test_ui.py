@@ -285,11 +285,11 @@ def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
 
     from ephyra.preferences import PreferencesDialog
     dialog = PreferencesDialog(window)
-    assert dialog.hosts_row.get_text() == "auth.example.org"
-    dialog.hosts_row.set_text("https://Login.example.org/x, auth.example.org")
-    dialog.hosts_row.emit("apply")
-    assert settings.Store().load().certificate_hosts == [
-        "login.example.org", "auth.example.org"]
+    assert dialog.form.hosts_entry.get_text() == "auth.example.org"
+    dialog.form.hosts_entry.set_text("https://Login.example.org/x, auth.example.org")
+    account = settings.Store().load()
+    dialog.form.apply(account)
+    assert account.certificate_hosts == ["login.example.org", "auth.example.org"]
     window.destroy()
 
 

@@ -125,15 +125,15 @@ only to the server's host and to `certificate_hosts_extra`; any other
 host that asks for it gets none and its request is cancelled. A login
 whose identity provider is on another host behind the same mutual TLS
 (Pangolin's or Authelia's page on `auth.example.org`, Jellyfin on
-`media.example.org`) needs that host listed: Preferences → Connection →
-**Proxy Login** → *Other Hosts for the Certificate* (comma- or
-space-separated; addresses are reduced to their host, lower case). It is
-kept in the account file as `certificate_hosts` and passed by
-`Window._on_proxy_login` (#33; tests `test_parse_hosts`,
-`test_proxy_login_opens_the_login_page`). The connection form's own login
-during setup does not take extra hosts yet: toolkit `ConnectionForm`
-passes none to `make_page`, so on the first connect such an identity
-provider gets no certificate (nexumia-de/phosh-toolkit#52).
+`media.example.org`) needs that host listed in the connection form's **Other Certificate Hosts**
+row (an expander in the server group, shown while a certificate is chosen;
+comma- or space-separated, addresses reduced to their host, lower case;
+`proxy_login.parse_hosts`). The toolkit's `ConnectionForm` (v0.5.0,
+nexumia-de/phosh-toolkit#52/#53) fills it from `account.certificate_hosts`,
+`apply()` writes it back, and it passes the hosts to `make_page`, so the
+first connect in setup works too. `Window._on_proxy_login` passes the
+account's list as `certificate_hosts_extra` (#33; test
+`test_proxy_login_opens_the_login_page`).
 
 # Sign-in and secrets
 

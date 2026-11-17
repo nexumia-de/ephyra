@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-17
+* **Update**: The Flatpak module `phosh-toolkit` is pinned to `v0.5.0` (commit `e5cccb6`) ([dependencies](dependencies.md)). Its `ConnectionForm` has the "Other Certificate Hosts" row itself (phosh-toolkit#52/#53) and passes the hosts to the setup login too, so the "Proxy Login" group in Preferences, `settings.parse_hosts` and its test are removed; `ConnectionForm.apply()` sets `account.certificate_hosts`. [Connection](connection.md#proxy-login) updated.
+
 ## 2026-11-16
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to the toolkit tag `v0.4.0` (commit `89e3505`) with its security fixes: redirects followed by `http.Client` itself with an allow-list of headers across origins and no body resent, the proxy cookie and auth scoped to their origin, the media proxy secret and queries redacted in log lines, image cache files named after a hash of the key (old files removed once at start, so the image cache is fetched again once), and the proxy-login web view giving the client certificate only to the server's host and `certificate_hosts_extra`. No Ephyra code used a changed API (`http.origin` stays importable).
 * **Update**: [Connection](connection.md#proxy-login), #33: the account keeps `certificate_hosts`, set in Preferences → Connection → Proxy Login → *Other Hosts for the Certificate* and passed as `certificate_hosts_extra` to `proxy_login.sign_in`, so an identity provider on another host behind the same mutual TLS still gets the client certificate in the login web view. The setup form's login does not take them yet (toolkit `ConnectionForm`, nexumia-de/phosh-toolkit#52). Screenshots of the preferences at 360×720 and 1000×700 checked. 69 tests pass against toolkit `v0.4.0`.

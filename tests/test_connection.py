@@ -31,13 +31,6 @@ def test_authorization_header():
     assert 'DeviceId="abc"' in header and header.endswith('Token="t"')
 
 
-def test_parse_hosts():
-    assert settings.parse_hosts("") == []
-    assert settings.parse_hosts(" Auth.Example.org,login.example.org  "
-                                "https://auth.example.org:8443/path") == [
-        "auth.example.org", "login.example.org"]
-
-
 def test_sign_in_and_browse(demo):
     jellyfin = signed_in(demo.url)
     assert jellyfin.token == TOKEN
