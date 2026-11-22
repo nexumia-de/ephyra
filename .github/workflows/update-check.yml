@@ -11,7 +11,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-    uses: nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@3ec15b8fb1ec01e9db75bb0952b89b101ea42d69 # v0.8.0
+    uses: nexumia-de/phosh-toolkit/.github/workflows/update-check.yml@1910057162098f0963b44623e91b3650f685c49b # v0.8.1
     with:
       manifest: de.nexumia.Ephyra.yml
     secrets:
