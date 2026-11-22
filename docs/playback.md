@@ -258,7 +258,7 @@ too, with the variant only in the stream's profile (ffprobe's names,
 `ProbeResultNormalizer`, `BdInfoExaminer`), and `avdec_dca` decodes its
 extensions. So `truehd` and `dts` are in the direct-play audio codecs.
 Open: the same check on the phone (aarch64), and whether decoding
-TrueHD 7.1 costs much battery.
+TrueHD 7.1 costs much battery ([owner checks](owner-checks.md)).
 
 # Verified (2026-11-04, owner's phone host, GStreamer 1.28.7)
 

@@ -89,3 +89,21 @@ phone and the owner's server can show the rest.
 - [ ] Without the certificate the setup page says the server asks for a
   client certificate, with the real reverse proxy.
 - [ ] Record the results under "Verified" in [connection](connection.md).
+
+## Codecs, hardware decoding, CPU and battery on the phone (issue 2)
+
+Which formats the GNOME 51 runtime's GStreamer decodes on the phone
+decides whether *Original* is a good default at home
+([playback](playback.md)). The runtime's decoders were listed in the
+cloud on x86_64 only; nothing below has run on the phone.
+
+- [ ] Play an H.264, an HEVC and an AV1 file with quality *Original*;
+  note which play and which fail ("Convert on the Server" appears).
+- [ ] Run `EPHYRA_DEBUG=1 GST_DEBUG=2 flatpak run de.nexumia.Ephyra`:
+  which decoder is used (hardware v4l2 or software `avdec_*`).
+- [ ] CPU (`top`) and battery drain for 10 min of a 1080p movie, direct
+  play and converted on the server.
+- [ ] Throughput of the local media proxy for a high-bitrate file
+  (stutter?).
+- [ ] Set `quality_home` and `quality_away` in `ephyra/settings.py`
+  from the results and record the numbers in [playback](playback.md).

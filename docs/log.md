@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-22
+* **Update**: #2, codec, decoder, CPU and battery measurements on the phone: moved as a checklist to [owner checks](owner-checks.md); the default qualities stay as they are until there are numbers.
 * **Update**: #1, checks of the route and the client certificate on the phone against the owner's server: moved as a checklist to [owner checks](owner-checks.md); nothing of it has run on a device.
 * **Decision**: [No colours from the artwork](decisions/no-artwork-tint.md), #8 closed as not planned: detail pages keep the accent and surfaces; the backdrop carries the item's colours.
 * **Decision**: [Private CA in the system trust store](decisions/private-ca-system-trust.md), #6: no CA file in Ephyra; the Flatpak sees the host's trust anchors through p11-kit (`flatpak-run.c` at `99e1af1`). [Connection](connection.md) updated; the device check is in [owner checks](owner-checks.md).
