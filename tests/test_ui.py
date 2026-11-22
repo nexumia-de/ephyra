@@ -651,29 +651,13 @@ def test_auto_next_off_in_the_player_and_the_preferences(app, demo, monkeypatch)
     window.destroy()
 
 
-def test_about_dialog_shows_whats_new(app, monkeypatch):
-    """"What's New" from the metainfo through phosh_toolkit.release_notes
-    (toolkit v0.7.0); with an older toolkit the dialog has no notes."""
-    import sys
-    import types
+def test_about_dialog_shows_whats_new(app):
+    """"What's New" is the newest release of the metainfo
+    (phosh_toolkit.release_notes)."""
     import xml.etree.ElementTree as ET
-    from ephyra import APP_ID, main
+    from ephyra import main
     assert main.SOURCE_METAINFO.is_file()
     newest = ET.parse(main.SOURCE_METAINFO).getroot().find("releases/release")
-    try:
-        from phosh_toolkit import release_notes  # noqa: F401
-    except ImportError:
-        assert main.about_dialog().get_release_notes() == ""
-        # What v0.7.0's add_to(dialog, app_id, source) will be given.
-        calls = []
-        stand_in = types.ModuleType("phosh_toolkit.release_notes")
-        stand_in.add_to = lambda dialog, app_id, source: calls.append(
-            (app_id, source))
-        monkeypatch.setitem(sys.modules, "phosh_toolkit.release_notes",
-                            stand_in)
-        main.about_dialog()
-        assert calls == [(APP_ID, main.SOURCE_METAINFO)]
-    else:
-        dialog = main.about_dialog()
-        assert dialog.get_release_notes_version() == newest.get("version")
-        assert dialog.get_release_notes().startswith(("<p>", "<ul>", "<ol>"))
+    dialog = main.about_dialog()
+    assert dialog.get_release_notes_version() == newest.get("version")
+    assert dialog.get_release_notes().startswith(("<p>", "<ul>", "<ol>"))

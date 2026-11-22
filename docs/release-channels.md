@@ -32,9 +32,8 @@ window gets the striped `devel` header bar.
 Every pull request users notice adds a fragment to `changelog.d/`;
 the weekly release pull request writes them into the metainfo. The About
 dialog shows the newest `<release>` as "What's New", read from the
-installed metainfo by `phosh_toolkit.release_notes` (toolkit v0.7.0 or
-newer; from a source tree it reads `data/de.nexumia.Ephyra.metainfo.xml`).
-With an older toolkit pin the row is missing. The first
+installed metainfo by `phosh_toolkit.release_notes` (from a source tree
+it reads `data/de.nexumia.Ephyra.metainfo.xml`). The first
 release, 0.1.0, is in the metainfo already: push the tag `v0.1.0` after
 merging the first pull request, then add the repository to phosh-apps.
 
