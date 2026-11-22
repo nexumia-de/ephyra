@@ -10,3 +10,4 @@
 * [Rotate the player inside the app](rotate-in-app.md) - A GSK transform turns the player; no DisplayConfig permission, nothing global left behind.
 * [No automatic burn-in](no-automatic-burn-in.md) - A default picture subtitle the server would burn in is left off; picture subtitles stay selectable, marked as converted on the server.
 * [Private CA in the system trust store](private-ca-system-trust.md) - A server certificate from the owner's own CA is trusted through the phone's trust store, which the Flatpak reads through p11-kit; no CA file in Ephyra.
+* [No colours from the artwork](no-artwork-tint.md) - Detail pages keep Jellyfin's blue and libadwaita's surfaces; tones picked from posters fail contrast and would make the accent meaningless.
