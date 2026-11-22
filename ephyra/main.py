@@ -117,19 +117,38 @@ class Application(Adw.Application):
             PreferencesDialog(window).present(window)
 
     def _on_about(self, *_):
-        dialog = Adw.AboutDialog(
-            application_name=NAME,
-            application_icon=APP_ID,
-            version=VERSION_LABEL,
-            developer_name="suitably",
-            website=REPO_URL,
-            issue_url=f"{REPO_URL}/issues",
-            license_type=Gtk.License.AGPL_3_0,
-            comments="Watch your Jellyfin library on a Phosh phone. Not "
-                     "affiliated with the Jellyfin project.",
-        )
-        dialog.add_link("Support Development", SUPPORT_URL)
-        dialog.present(self.props.active_window)
+        about_dialog().present(self.props.active_window)
+
+
+# The metainfo in the source tree, for "What's New" when Ephyra runs
+# without being installed.
+SOURCE_METAINFO = (Path(__file__).resolve().parent.parent / "data"
+                   / "de.nexumia.Ephyra.metainfo.xml")
+
+
+def about_dialog():
+    """The About dialog with "What's New" from the installed metainfo
+    (phosh_toolkit.release_notes, toolkit v0.7.0 or newer)."""
+    dialog = Adw.AboutDialog(
+        application_name=NAME,
+        application_icon=APP_ID,
+        version=VERSION_LABEL,
+        developer_name="suitably",
+        website=REPO_URL,
+        issue_url=f"{REPO_URL}/issues",
+        license_type=Gtk.License.AGPL_3_0,
+        comments="Watch your Jellyfin library on a Phosh phone. Not "
+                 "affiliated with the Jellyfin project.",
+    )
+    dialog.add_link("Support Development", SUPPORT_URL)
+    try:
+        from phosh_toolkit import release_notes
+    except ImportError:
+        # The pinned toolkit tag is older than v0.7.0
+        # (docs/owner-checks.md): no "What's New" yet.
+        return dialog
+    release_notes.add_to(dialog, APP_ID, SOURCE_METAINFO)
+    return dialog
 
 
 def main(argv):

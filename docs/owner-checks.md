@@ -40,3 +40,21 @@ run.
 - [ ] If the test times out again, read "Captured log call" and the
   thread stacks of that run: a `call` without its `answer` names the
   request that was lost. Open a new issue with both.
+
+## "What's New" in the About dialog (issue 7)
+
+`main.about_dialog()` calls `phosh_toolkit.release_notes.add_to(dialog,
+APP_ID, source)` when the toolkit has it; checked against
+nexumia-de/phosh-toolkit#59 in the cloud (test and a 360×720
+screenshot with the row "What's New"). The pinned `v0.5.0` does not have
+the module, so released builds show no notes yet.
+
+- [ ] Tag phosh-toolkit `v0.7.0` with #59 merged and merge the pin
+  update (same step as for issue 21). That pull request adds
+  `changelog.d/whats-new.feature.md` ("The About dialog shows what is new
+  in the installed version."); it is left out until then, so a release
+  before it does not announce a missing row.
+- [ ] Then remove the `ImportError` fallback in `ephyra/main.py` and the
+  stand-in branch of `test_about_dialog_shows_whats_new`.
+- [ ] Open About in the installed nightly and see the newest release
+  under "What's New".
