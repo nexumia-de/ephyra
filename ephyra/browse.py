@@ -37,6 +37,7 @@ class MainPage(Adw.NavigationPage):
         header = Adw.HeaderBar(title_widget=self.sidebar_title)
         menu = Gio.Menu()
         menu.append("_Preferences", "app.preferences")
+        menu.append("_Report a Problem…", "app.report-problem")
         menu.append(f"_About {NAME}", "app.about")
         header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic",
                                        menu_model=menu, primary=True,

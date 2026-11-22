@@ -661,3 +661,13 @@ def test_about_dialog_shows_whats_new(app):
     dialog = main.about_dialog()
     assert dialog.get_release_notes_version() == newest.get("version")
     assert dialog.get_release_notes().startswith(("<p>", "<ul>", "<ol>"))
+
+
+def test_report_a_problem_action_and_about_issue_url(app):
+    """The main menu offers "Report a Problem…" (phosh_toolkit.feedback), and
+    the About dialog's issue link is the filled-in bug form."""
+    from ephyra import VERSION, main
+    assert app.lookup_action("report-problem") is not None
+    url = main.about_dialog().get_issue_url()
+    assert url.startswith("https://github.com/nexumia-de/ephyra/issues/new")
+    assert "template=bug.yml" in url and f"version={VERSION}" in url
