@@ -4,6 +4,7 @@ library (tests/data/demo). The store screenshots use it
 TLS against it. Only the endpoints Ephyra calls are implemented.
 No GTK."""
 import json
+import logging
 import re
 import ssl
 import threading
@@ -11,8 +12,29 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+log = logging.getLogger("ephyra.demo")
+# Seconds a client may take for its TLS handshake.
+HANDSHAKE_TIMEOUT = 10
+
 TOKEN = "demo-token"
 PASSWORD = "demo"
+
+
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def finish_request(self, request, client_address):
+        if isinstance(request, ssl.SSLSocket):
+            request.settimeout(HANDSHAKE_TIMEOUT)
+            try:
+                request.do_handshake()
+            except (OSError, ssl.SSLError) as e:
+                # A client without its certificate ends here; the client
+                # sees the refused handshake.
+                log.debug("TLS handshake with %s failed: %s", client_address, e)
+                return
+            request.settimeout(None)
+        super().finish_request(request, client_address)
 
 
 class DemoServer:
@@ -45,7 +67,7 @@ class DemoServer:
         class Handler(_Handler):
             owner = server
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd = _Server(("127.0.0.1", 0), Handler)
         self.httpd.daemon_threads = True
         self.scheme = "http"
         if tls:
@@ -54,8 +76,13 @@ class DemoServer:
             context.load_cert_chain(cert, key)
             context.load_verify_locations(ca)
             context.verify_mode = ssl.CERT_REQUIRED
-            self.httpd.socket = context.wrap_socket(self.httpd.socket,
-                                                    server_side=True)
+            # The handshake runs in the connection's own thread
+            # (_Server.finish_request): in accept() one client that never
+            # finished it held up every other connection and shutdown()
+            # (#21).
+            self.httpd.socket = context.wrap_socket(
+                self.httpd.socket, server_side=True,
+                do_handshake_on_connect=False)
             self.scheme = "https"
 
     @property

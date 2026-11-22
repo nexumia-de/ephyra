@@ -45,6 +45,7 @@ class Window(Adw.ApplicationWindow):
         else:
             self.show_setup()
         self.connect("close-request", lambda *_: self.proxy.stop())
+        self.connect("destroy", lambda *_: self._close_main())
 
     def _collapse(self, collapsed):
         self._collapsed = collapsed
@@ -57,13 +58,19 @@ class Window(Adw.ApplicationWindow):
     # --- pages -------------------------------------------------------
 
     def show_setup(self):
-        self.main = None
+        self._close_main()
         self.nav.replace([SetupPage(self)])
 
     def show_library(self):
+        self._close_main()
         self.main = MainPage(self)
         self.main.split.set_collapsed(self._collapsed)
         self.nav.replace([self.main])
+
+    def _close_main(self):
+        if self.main:
+            self.main.close()
+        self.main = None
 
     def show_view(self, index):
         """Home (0) or the n-th library of the sidebar."""

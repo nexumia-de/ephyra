@@ -1,6 +1,8 @@
 """The Jellyfin API, the connection on top of phosh_toolkit's router, and
 the media proxy against the demo server, also behind mutual TLS. The
 toolkit's own tests cover the router and the proxy in general."""
+import socket
+import time
 import urllib.request
 
 import pytest
@@ -64,6 +66,23 @@ def test_mtls_requires_the_client_certificate(mtls_demo, pki, trust):
     http.certificate = tls.load((pki / "client.p12").read_bytes(), P12_PASSWORD)
     jellyfin = signed_in(mtls_demo.url, http)
     assert jellyfin.views()
+
+
+def test_mtls_demo_serves_others_while_a_client_stalls(mtls_demo, pki, trust):
+    """A client that connects and never finishes its TLS handshake holds
+    up neither other clients nor stop() (#21: the handshake ran in the
+    server's accept loop)."""
+    stalled = socket.create_connection(mtls_demo.httpd.server_address)
+    try:
+        time.sleep(0.2)     # the server has accepted it
+        http = Client(USER_AGENT)
+        http.tls_database = trust
+        http.certificate = tls.load((pki / "client.p12").read_bytes(), P12_PASSWORD)
+        started = time.monotonic()
+        assert Jellyfin(http=http).public_info(mtls_demo.url, timeout=5)["Id"]
+        assert time.monotonic() - started < 5
+    finally:
+        stalled.close()
 
 
 def _connection(local, remote, networks=(), ssids=None, monkeypatch=None):

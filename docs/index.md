@@ -12,6 +12,7 @@ Change history is in [log.md](log.md).
 # Plan
 
 * [Roadmap](roadmap.md) - Goals and exit criteria of the milestones; the work items are GitHub issues.
+* [Owner checks](owner-checks.md) - What only the owner can do (phone, real server, toolkit tags, CI observations) after the issues were closed on 2026-11-22.
 
 # Design
 

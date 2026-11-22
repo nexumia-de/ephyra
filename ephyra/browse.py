@@ -1,5 +1,7 @@
 """The library: a sidebar with Home and the user's libraries, the home
 sections, library grids and search."""
+import logging
+
 from gi.repository import Adw, Gio, Gtk, Pango
 
 from phosh_toolkit import route
@@ -7,6 +9,8 @@ from phosh_toolkit import route
 from ephyra import NAME, widgets
 from ephyra.connection import CONNECTING, OFFLINE
 from ephyra.library import LibraryView, SortActions, sort_menu
+
+log = logging.getLogger("ephyra.browse")
 
 
 def state_text(conn):
@@ -21,6 +25,9 @@ class MainPage(Adw.NavigationPage):
         self.conn = window.connection
         self.views = []
         self.content_pages = {}
+        # One /UserViews request at a time: the first route found during
+        # sign-in used to send a second one (#21).
+        self._views_pending = False
 
         # Sidebar
         self.sidebar_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
@@ -71,17 +78,29 @@ class MainPage(Adw.NavigationPage):
                                              content=self.content,
                                              show_content=True)
         self.set_child(self.split)
-        self.conn.connect("state-changed", self._on_state)
+        self._state_handler = self.conn.connect("state-changed", self._on_state)
         self._on_state()
         self.reload()
+
+    def close(self):
+        """Replaced (signed out): no more requests for this page. It used
+        to load the libraries again on the next route change and sign out
+        a second time (#21)."""
+        if self._state_handler:
+            self.conn.disconnect(self._state_handler)
+            self._state_handler = 0
 
     # --- sidebar -------------------------------------------------------
 
     def reload(self):
         """Fetch the libraries, then show Home."""
+        if self._views_pending:
+            return
+        self._views_pending = True
         self.conn.call(self.conn.jellyfin.views, self._on_views)
 
     def _on_views(self, views, error):
+        self._views_pending = False
         if error is not None:
             self._show_error(error, self.reload)
             return
@@ -167,11 +186,15 @@ class HomeView(Gtk.Stack):
         super().__init__(transition_type=Gtk.StackTransitionType.CROSSFADE)
         self.window, self.main = window, main
         self.add_named(widgets.loading_page(), "loading")
+        self._requests = 0
         self.load()
 
     def load(self):
         jellyfin = self.window.connection.jellyfin
         views = self.main.views
+        self._requests += 1
+        request = self._requests
+        log.debug("home: request %d for %d libraries", request, len(views))
 
         def fetch():
             sections = [("Continue Watching", jellyfin.resume(), "landscape", None),
@@ -183,9 +206,13 @@ class HomeView(Gtk.Stack):
                                      view["Id"]))
             return sections
 
-        self.window.connection.call(fetch, self._on_loaded)
+        self.window.connection.call(
+            fetch, lambda sections, error: self._on_loaded(sections, error,
+                                                           request))
 
-    def _on_loaded(self, sections, error):
+    def _on_loaded(self, sections, error, request=0):
+        log.debug("home: answer %d: %s", request,
+                  "error" if error is not None else f"{len(sections)} sections")
         for name in ("content", "error"):
             old = self.get_child_by_name(name)
             if old:
@@ -277,4 +304,3 @@ class SearchPage(Adw.NavigationPage):
                 "results" if self.store.get_n_items() else "empty")
 
         self.window.connection.call(search, done)
-

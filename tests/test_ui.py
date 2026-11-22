@@ -1,6 +1,7 @@
 """The whole flow through the real widgets against the demo server behind
 mutual TLS: setup, sign in, home, a library, details, the player and the
 preferences. Needs a display (CI runs pytest under xvfb-run)."""
+import logging
 import os
 from pathlib import Path
 
@@ -42,12 +43,16 @@ def visible(window):
     return window.nav.get_visible_page()
 
 
-def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
+def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch,
+                                       caplog):
     from ephyra.browse import MainPage
     from ephyra.detail import DetailPage
     from ephyra.player import PlayerPage
     from ephyra.preferences import PreferencesDialog
     from ephyra.window import Window
+    # Requests and answers with times in the report if a wait times out
+    # (#21: Home sometimes never left its loading page).
+    caplog.set_level(logging.DEBUG, logger="ephyra")
 
     def trusting_client(user_agent):
         client = Client(user_agent)
@@ -244,10 +249,22 @@ def test_server_rejecting_the_token_shows_setup(app, demo, monkeypatch):
     store.save(account)
     keyring.store(keyring.TOKEN, "revoked")
     conn = connection.Connection(store, watch=False)
+    calls = []
+    views = conn.jellyfin.views
+    monkeypatch.setattr(conn.jellyfin, "views",
+                        lambda: calls.append(1) or views())
+    signed_out = []
+    conn.connect("signed-out", lambda *_: signed_out.append(1))
     window = Window(app, conn)
     window.present()
     run_until(lambda: isinstance(visible(window), setup.SetupPage))
     assert not conn.signed_in
+    # One request for the libraries, one sign-out; route changes after it
+    # load nothing more (#21: a late second 401 cleared the next test's
+    # token).
+    conn.resolve()
+    run_until(lambda: conn.state != "connecting")
+    assert calls == [1] and signed_out == [1]
     window.destroy()
 
 
@@ -264,11 +281,9 @@ def test_library_sort_and_filters_are_kept_per_library(app, demo, monkeypatch):
     account.server_id = demo.library["server"]["Id"]
     account.user_id = demo.library["user"]["Id"]
     store.save(account)
+    keyring.store(keyring.TOKEN, TOKEN)
 
     def open_movies():
-        # Stored again each time: a late 401 of an earlier test's
-        # connection clears the shared in-memory keyring.
-        keyring.store(keyring.TOKEN, TOKEN)
         conn = connection.Connection(store, watch=False)
         window = Window(app, conn)
         window.present()
