@@ -99,8 +99,10 @@ on plain HTTP is entered as `http://192.168.1.10:8096`.
   with the tests' Python server); and nginx's HTTP 400 page "No required
   SSL certificate was sent". All become "The server asks for a client
   certificate" and mark the certificate row.
-- The server certificate is checked against the system's CAs. Servers
-  with a private CA are not supported yet (follow-up issue).
+- The server certificate is checked against the system's CAs. A
+  server signed by the owner's own CA works once that CA is in the
+  phone's trust store, which the Flatpak reads through p11-kit; Ephyra
+  has no CA file of its own ([decision](decisions/private-ca-system-trust.md)).
 
 # Proxy login
 
@@ -171,7 +173,7 @@ device id and the quality settings. A broken file is kept as `.bad`.
 - `tests/test_ui.py`: the setup page marks the certificate row without
   a certificate, then signs in with it.
 - Not yet on the phone: NetworkManager access from the Flatpak and the
-  owner's real reverse proxy (issue in milestone M1).
+  owner's real reverse proxy ([owner checks](owner-checks.md)).
 
 [^jf-auth]: Jellyfin server, AuthorizationContext
 [^jf-system]: Jellyfin server, SystemController

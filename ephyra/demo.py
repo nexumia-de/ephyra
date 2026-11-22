@@ -4,6 +4,7 @@ library (tests/data/demo). The store screenshots use it
 TLS against it. Only the endpoints Ephyra calls are implemented.
 No GTK."""
 import json
+import logging
 import re
 import ssl
 import threading
@@ -11,8 +12,29 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+log = logging.getLogger("ephyra.demo")
+# Seconds a client may take for its TLS handshake.
+HANDSHAKE_TIMEOUT = 10
+
 TOKEN = "demo-token"
 PASSWORD = "demo"
+
+
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def finish_request(self, request, client_address):
+        if isinstance(request, ssl.SSLSocket):
+            request.settimeout(HANDSHAKE_TIMEOUT)
+            try:
+                request.do_handshake()
+            except (OSError, ssl.SSLError) as e:
+                # A client without its certificate ends here; the client
+                # sees the refused handshake.
+                log.debug("TLS handshake with %s failed: %s", client_address, e)
+                return
+            request.settimeout(None)
+        super().finish_request(request, client_address)
 
 
 class DemoServer:
@@ -45,7 +67,7 @@ class DemoServer:
         class Handler(_Handler):
             owner = server
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd = _Server(("127.0.0.1", 0), Handler)
         self.httpd.daemon_threads = True
         self.scheme = "http"
         if tls:
@@ -54,8 +76,13 @@ class DemoServer:
             context.load_cert_chain(cert, key)
             context.load_verify_locations(ca)
             context.verify_mode = ssl.CERT_REQUIRED
-            self.httpd.socket = context.wrap_socket(self.httpd.socket,
-                                                    server_side=True)
+            # The handshake runs in the connection's own thread
+            # (_Server.finish_request): in accept() one client that never
+            # finished it held up every other connection and shutdown()
+            # (#21).
+            self.httpd.socket = context.wrap_socket(
+                self.httpd.socket, server_side=True,
+                do_handshake_on_connect=False)
             self.scheme = "https"
 
     @property
@@ -213,6 +240,28 @@ def latest(h, q, p):
     h._json(items[:int(q.get("limit", 12))])
 
 
+# sortBy values the demo understands, as keys of the recorded items. Items
+# without the field (the recordings have no DateCreated) keep the name
+# order; the server's own rules are in its ItemSortBy comparers.
+SORT_KEYS = {"datecreated": lambda i: i.get("DateCreated") or "",
+             "premieredate": lambda i: i.get("PremiereDate")
+             or str(i.get("ProductionYear") or ""),
+             "communityrating": lambda i: i.get("CommunityRating") or 0}
+
+
+def sort_items(found, q):
+    """Episodes and tracks by number, else by name; then by the first
+    sortBy value in sortOrder."""
+    found = sorted(found, key=lambda i: (i.get("IndexNumber") or 0, i["Name"]))
+    first = (q.get("sortby") or "").lower().split(",")[0]
+    descending = (q.get("sortorder") or "").lower().startswith("descending")
+    if first in SORT_KEYS:
+        found.sort(key=SORT_KEYS[first], reverse=descending)
+    elif descending:
+        found.reverse()
+    return found
+
+
 @route("GET", r"/Items")
 def items(h, q, p):
     owner = h.owner
@@ -225,7 +274,12 @@ def items(h, q, p):
         found = owner.children(q.get("parentid"),
                                q.get("recursive") == "true",
                                q.get("includeitemtypes"))
-        found.sort(key=lambda i: (i.get("IndexNumber") or 0, i["Name"]))
+        found = sort_items(found, q)
+    filters = set((q.get("filters") or "").lower().split(","))
+    if "isunplayed" in filters:
+        found = [i for i in found if not i.get("UserData", {}).get("Played")]
+    if "isfavorite" in filters:
+        found = [i for i in found if i.get("UserData", {}).get("IsFavorite")]
     start, limit = int(q.get("startindex", 0)), int(q.get("limit", 100))
     h._json({"Items": found[start:start + limit],
              "TotalRecordCount": len(found), "StartIndex": start})

@@ -1,16 +1,16 @@
 """The library: a sidebar with Home and the user's libraries, the home
 sections, library grids and search."""
+import logging
+
 from gi.repository import Adw, Gio, Gtk, Pango
 
 from phosh_toolkit import route
 
 from ephyra import NAME, widgets
 from ephyra.connection import CONNECTING, OFFLINE
+from ephyra.library import LibraryView, SortActions, sort_menu
 
-# Item types a library grid lists, by the library's collection type.
-LIBRARY_TYPES = {"movies": "Movie", "tvshows": "Series",
-                 "music": "MusicAlbum", "boxsets": "BoxSet"}
-PAGE = 60
+log = logging.getLogger("ephyra.browse")
 
 
 def state_text(conn):
@@ -25,6 +25,9 @@ class MainPage(Adw.NavigationPage):
         self.conn = window.connection
         self.views = []
         self.content_pages = {}
+        # One /UserViews request at a time: the first route found during
+        # sign-in used to send a second one (#21).
+        self._views_pending = False
 
         # Sidebar
         self.sidebar_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
@@ -53,8 +56,17 @@ class MainPage(Adw.NavigationPage):
                             tooltip_text="Search")
         search.update_property([Gtk.AccessibleProperty.LABEL], ["Search"])
         search.set_action_name("app.search")
+        # Sort order and filters of the library on screen (library.py).
+        self.sort_actions = SortActions(self.conn, self._on_sort_changed)
+        self.insert_action_group("library", self.sort_actions)
+        self.sort_button = Gtk.MenuButton(
+            icon_name="view-sort-descending-symbolic", menu_model=sort_menu(),
+            tooltip_text="Sort and Filter", visible=False)
+        self.sort_button.update_property([Gtk.AccessibleProperty.LABEL],
+                                         ["Sort and Filter"])
         self.content_header = Adw.HeaderBar()
         self.content_header.pack_end(search)
+        self.content_header.pack_end(self.sort_button)
         content_view = Adw.ToolbarView()
         content_view.add_top_bar(self.content_header)
         content_view.add_top_bar(self.banner)
@@ -66,17 +78,29 @@ class MainPage(Adw.NavigationPage):
                                              content=self.content,
                                              show_content=True)
         self.set_child(self.split)
-        self.conn.connect("state-changed", self._on_state)
+        self._state_handler = self.conn.connect("state-changed", self._on_state)
         self._on_state()
         self.reload()
+
+    def close(self):
+        """Replaced (signed out): no more requests for this page. It used
+        to load the libraries again on the next route change and sign out
+        a second time (#21)."""
+        if self._state_handler:
+            self.conn.disconnect(self._state_handler)
+            self._state_handler = 0
 
     # --- sidebar -------------------------------------------------------
 
     def reload(self):
         """Fetch the libraries, then show Home."""
+        if self._views_pending:
+            return
+        self._views_pending = True
         self.conn.call(self.conn.jellyfin.views, self._on_views)
 
     def _on_views(self, views, error):
+        self._views_pending = False
         if error is not None:
             self._show_error(error, self.reload)
             return
@@ -117,9 +141,17 @@ class MainPage(Adw.NavigationPage):
             self.content_pages[key] = page
             self.stack.add_named(page, key)
         self.stack.set_visible_child_name(key)
+        self.sort_button.set_visible(key != "home")
+        if key != "home":
+            self.sort_actions.show(key)
         title = "Home" if key == "home" else next(
             v["Name"] for v in self.views if v["Id"] == key)
         self.content.set_title(title)
+
+    def _on_sort_changed(self, key):
+        page = self.content_pages.get(key)
+        if page is not None:
+            page.reload()
 
     def refresh(self):
         """After playback: reload what shows progress."""
@@ -154,11 +186,15 @@ class HomeView(Gtk.Stack):
         super().__init__(transition_type=Gtk.StackTransitionType.CROSSFADE)
         self.window, self.main = window, main
         self.add_named(widgets.loading_page(), "loading")
+        self._requests = 0
         self.load()
 
     def load(self):
         jellyfin = self.window.connection.jellyfin
         views = self.main.views
+        self._requests += 1
+        request = self._requests
+        log.debug("home: request %d for %d libraries", request, len(views))
 
         def fetch():
             sections = [("Continue Watching", jellyfin.resume(), "landscape", None),
@@ -170,9 +206,13 @@ class HomeView(Gtk.Stack):
                                      view["Id"]))
             return sections
 
-        self.window.connection.call(fetch, self._on_loaded)
+        self.window.connection.call(
+            fetch, lambda sections, error: self._on_loaded(sections, error,
+                                                           request))
 
-    def _on_loaded(self, sections, error):
+    def _on_loaded(self, sections, error, request=0):
+        log.debug("home: answer %d: %s", request,
+                  "error" if error is not None else f"{len(sections)} sections")
         for name in ("content", "error"):
             old = self.get_child_by_name(name)
             if old:
@@ -205,64 +245,6 @@ class HomeView(Gtk.Stack):
             self.add_named(Gtk.ScrolledWindow(
                 child=clamp, hscrollbar_policy=Gtk.PolicyType.NEVER), "content")
         self.set_visible_child_name("content")
-
-
-class LibraryView(Gtk.Stack):
-    """All items of a library, a page at a time."""
-
-    def __init__(self, window, view):
-        super().__init__(transition_type=Gtk.StackTransitionType.CROSSFADE)
-        self.window, self.view = window, view
-        self.store = Gio.ListStore.new(widgets.Item)
-        self.total = None
-        self.loading = False
-        grid = widgets.CardGrid(window.images, self.store, window.show_item)
-        scrolled = Gtk.ScrolledWindow(child=grid,
-                                      hscrollbar_policy=Gtk.PolicyType.NEVER)
-        scrolled.connect("edge-reached", self._on_edge)
-        self.add_named(widgets.loading_page(), "loading")
-        self.add_named(scrolled, "content")
-        self.load_more()
-
-    def _on_edge(self, scrolled, position):
-        if position == Gtk.PositionType.BOTTOM:
-            self.load_more()
-
-    def load_more(self):
-        if self.loading or (self.total is not None
-                            and self.store.get_n_items() >= self.total):
-            return
-        self.loading = True
-        ctype = self.view.get("CollectionType")
-        types = LIBRARY_TYPES.get(ctype)
-        jellyfin = self.window.connection.jellyfin
-        self.window.connection.call(
-            jellyfin.items, self._on_loaded, self.view["Id"],
-            self.store.get_n_items(), PAGE, types, bool(types))
-
-    def _on_loaded(self, result, error):
-        self.loading = False
-        if error is not None:
-            if self.store.get_n_items():
-                self.window.toast(str(error))
-                return
-            old = self.get_child_by_name("error")
-            if old:
-                self.remove(old)
-            self.add_named(widgets.error_page("Can't Load the Library",
-                                              str(error), self.load_more), "error")
-            self.set_visible_child_name("error")
-            return
-        self.total = result.get("TotalRecordCount", 0)
-        for data in result.get("Items", []):
-            self.store.append(widgets.Item(data))
-        if not self.store.get_n_items():
-            page = Adw.StatusPage(icon_name=widgets.icon_for(self.view),
-                                  title="Empty Library")
-            self.add_named(page, "empty")
-            self.set_visible_child_name("empty")
-        else:
-            self.set_visible_child_name("content")
 
 
 class SearchPage(Adw.NavigationPage):
@@ -322,4 +304,3 @@ class SearchPage(Adw.NavigationPage):
                 "results" if self.store.get_n_items() else "empty")
 
         self.window.connection.call(search, done)
-

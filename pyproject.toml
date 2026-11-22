@@ -2,3 +2,7 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
+# Times in captured log lines: the order of requests and answers when a
+# UI test hangs (#21).
+log_format = "%(asctime)s.%(msecs)03d %(name)s: %(message)s"
+log_date_format = "%H:%M:%S"

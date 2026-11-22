@@ -17,6 +17,7 @@ python.install_sources(
   'ephyra/__main__.py',
   'ephyra/api.py',
   'ephyra/browse.py',
+  'ephyra/library.py',
   'ephyra/connection.py',
   'ephyra/demo.py',
   'ephyra/detail.py',

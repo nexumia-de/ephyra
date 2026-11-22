@@ -97,6 +97,17 @@ class Connection(Router):
         self.sign_out(tell_server=False)
         self.emit("signed-out")
 
+    def call(self, fn, done, *args):
+        """Router.call, logged with EPHYRA_DEBUG (the UI test's log shows
+        which answer did not arrive, #21)."""
+        name = getattr(fn, "__qualname__", repr(fn))
+        log.debug("call %s (route %s)", name, self.state)
+
+        def logged(result, error):
+            log.debug("answer %s%s", name, f": {error}" if error else "")
+            done(result, error)
+        super().call(fn, logged, *args)
+
     def forward(self, path):
         """The media proxy's upstream for a server path: the current route
         with the token as header (phosh_toolkit.proxy)."""

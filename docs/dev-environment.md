@@ -55,7 +55,9 @@ The tests find the shared package in the sibling checkout
 `../phosh-toolkit` by themselves; CI checks out phosh-toolkit at the
 commit the manifest pins (`tests.yml`).
 
-`EPHYRA_DEBUG=1` logs the route, proxy requests and playback.
+`EPHYRA_DEBUG=1` logs the route, API calls and their answers, proxy
+requests and playback. A failing `test_setup_sign_in_browse_and_play`
+shows the same lines with times under "Captured log call".
 `EPHYRA_KEYRING=memory` keeps secrets in memory (tests, screenshots).
 CI has a session bus, so the UI tests share one application (a second
 one with the same id can't register); run them under `dbus-run-session`
