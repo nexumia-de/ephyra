@@ -99,8 +99,10 @@ on plain HTTP is entered as `http://192.168.1.10:8096`.
   with the tests' Python server); and nginx's HTTP 400 page "No required
   SSL certificate was sent". All become "The server asks for a client
   certificate" and mark the certificate row.
-- The server certificate is checked against the system's CAs. Servers
-  with a private CA are not supported yet (follow-up issue).
+- The server certificate is checked against the system's CAs. A
+  server signed by the owner's own CA works once that CA is in the
+  phone's trust store, which the Flatpak reads through p11-kit; Ephyra
+  has no CA file of its own ([decision](decisions/private-ca-system-trust.md)).
 
 # Proxy login
 

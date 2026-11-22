@@ -58,3 +58,15 @@ the module, so released builds show no notes yet.
   stand-in branch of `test_about_dialog_shows_whats_new`.
 - [ ] Open About in the installed nightly and see the newest release
   under "What's New".
+
+## Server certificate from a private CA (issue 6)
+
+Decided: the CA goes into the phone's trust store
+([decision](decisions/private-ca-system-trust.md)). Not checked on a
+device.
+
+- [ ] On the phone: copy the CA as `/usr/local/share/ca-certificates/<name>.crt`,
+  run `sudo update-ca-certificates`, then set up Ephyra against a server
+  signed by that CA; setup must pass without a TLS error.
+- [ ] If it fails, note the error in the decision record and reopen
+  issue 6 (a CA file in phosh-toolkit's `ConnectionForm` instead).
