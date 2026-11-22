@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-22
+* **Update**: phosh-toolkit pinned to `v0.7.0` (commit `13275a7`): the Flatpak module (tag and commit) and the reusable workflows `flatpak.yml`, `release.yml`, `update-check.yml` at the tag's commit instead of `@main` (toolkit decision "toolkit version pins"). The About dialog's "What's New" (#7) no longer needs its `ImportError` fallback; `run_until()` prints thread stacks on a timeout (#21). [Dependencies](dependencies.md) and [owner checks](owner-checks.md) updated.
 * **Update**: #2, codec, decoder, CPU and battery measurements on the phone: moved as a checklist to [owner checks](owner-checks.md); the default qualities stay as they are until there are numbers.
 * **Update**: #1, checks of the route and the client certificate on the phone against the owner's server: moved as a checklist to [owner checks](owner-checks.md); nothing of it has run on a device.
 * **Decision**: [No colours from the artwork](decisions/no-artwork-tint.md), #8 closed as not planned: detail pages keep the accent and surfaces; the backdrop carries the item's colours.
