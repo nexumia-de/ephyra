@@ -70,3 +70,22 @@ device.
   signed by that CA; setup must pass without a TLS error.
 - [ ] If it fails, note the error in the decision record and reopen
   issue 6 (a CA file in phosh-toolkit's `ConnectionForm` instead).
+
+## Home and remote route and the client certificate on the phone (issue 1)
+
+Covered in the cloud by `tests/test_connection.py` and
+`tests/test_ui.py` against the demo server behind mutual TLS with
+certificates made by openssl ([connection](connection.md)). Only the
+phone and the owner's server can show the rest.
+
+- [ ] Setup with the remote URL, the `.p12` client certificate and the
+  local address; sign in.
+- [ ] "Add Current Wi-Fi" shows the home SSID (NetworkManager through
+  `--system-talk-name` from the Flatpak).
+- [ ] At home the sidebar says "Home network", on mobile data "Remote";
+  switching Wi-Fi off and on changes it within a few seconds.
+- [ ] A video started at home keeps playing after leaving the Wi-Fi
+  (the proxy follows the new route), or note what happens.
+- [ ] Without the certificate the setup page says the server asks for a
+  client certificate, with the real reverse proxy.
+- [ ] Record the results under "Verified" in [connection](connection.md).

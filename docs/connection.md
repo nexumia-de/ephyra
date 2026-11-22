@@ -173,7 +173,7 @@ device id and the quality settings. A broken file is kept as `.bad`.
 - `tests/test_ui.py`: the setup page marks the certificate row without
   a certificate, then signs in with it.
 - Not yet on the phone: NetworkManager access from the Flatpak and the
-  owner's real reverse proxy (issue in milestone M1).
+  owner's real reverse proxy ([owner checks](owner-checks.md)).
 
 [^jf-auth]: Jellyfin server, AuthorizationContext
 [^jf-system]: Jellyfin server, SystemController

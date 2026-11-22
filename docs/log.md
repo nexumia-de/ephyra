@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-22
+* **Update**: #1, checks of the route and the client certificate on the phone against the owner's server: moved as a checklist to [owner checks](owner-checks.md); nothing of it has run on a device.
 * **Decision**: [No colours from the artwork](decisions/no-artwork-tint.md), #8 closed as not planned: detail pages keep the accent and surfaces; the backdrop carries the item's colours.
 * **Decision**: [Private CA in the system trust store](decisions/private-ca-system-trust.md), #6: no CA file in Ephyra; the Flatpak sees the host's trust anchors through p11-kit (`flatpak-run.c` at `99e1af1`). [Connection](connection.md) updated; the device check is in [owner checks](owner-checks.md).
 * **Update**: #7, [release channels](release-channels.md#release): the About dialog gets "What's New" from `phosh_toolkit.release_notes.add_to()` (nexumia-de/phosh-toolkit#59, coming as tag `v0.7.0`), built by the new `main.about_dialog()`; until the pin reaches that tag the import fails and the dialog stays as before. Test against both toolkits and a 360×720 screenshot with #59 checked; the rest is in [owner checks](owner-checks.md).
