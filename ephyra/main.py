@@ -8,10 +8,13 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
-from phosh_toolkit import release_notes  # noqa: E402
+from phosh_toolkit import feedback, release_notes  # noqa: E402
 
 from ephyra import (APP_ID, NAME, NIGHTLY, REPO_URL, SUPPORT_URL,  # noqa: E402
-                    VERSION_LABEL)
+                    VERSION, VERSION_LABEL)
+from ephyra.keyring import KEYRING  # noqa: E402
+
+REPO = "nexumia-de/ephyra"
 
 log = logging.getLogger("ephyra")
 
@@ -47,6 +50,10 @@ class Application(Adw.Application):
                          # player pauses videos when the screen goes off.
                          register_session=True)
         self.connection = None
+        # app.report-problem (docs/feedback.md in phosh-toolkit); the
+        # Jellyfin client stays out of it: it carries the server's cookies.
+        feedback.install(self, repo=REPO, app_name=NAME,
+                         version=VERSION_LABEL, keyring=KEYRING)
         for name, callback in (("about", self._on_about),
                                ("preferences", self._on_preferences),
                                ("search", self._on_search),
@@ -136,7 +143,7 @@ def about_dialog():
         version=VERSION_LABEL,
         developer_name="suitably",
         website=REPO_URL,
-        issue_url=f"{REPO_URL}/issues",
+        issue_url=feedback.issue_url(REPO, VERSION),
         license_type=Gtk.License.AGPL_3_0,
         comments="Watch your Jellyfin library on a Phosh phone. Not "
                  "affiliated with the Jellyfin project.",
