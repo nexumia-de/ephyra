@@ -51,22 +51,30 @@
   <screenshots>
     <screenshot type="default">
       <caption>Continue watching, next episodes and the newest movies</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/home-phone-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/home-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Continue watching, next episodes and the newest movies</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/home-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/home-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>A movie library</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/movies-phone-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/movies-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>A movie library</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.2.0/movies-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/movies-desktop-light.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.0" date="2026-11-22">
+      <description>
+        <ul>
+          <li>Libraries can be sorted by name, date added, release date or rating and filtered to unplayed items or favourites; the choice is kept for each library.</li>
+          <li>The About dialog shows what is new in the installed version.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-19">
       <description>
         <ul>
