@@ -42,6 +42,9 @@ class Account:
     auto_next: bool = True
     # Videos go on playing while the screen is off; off pauses them.
     play_screen_off: bool = False
+    # Sort order and filters per library id: {"sort", "order", "filters"}
+    # (ephyra/library.py).
+    library_options: dict = field(default_factory=dict)
 
     @property
     def signed_in(self):

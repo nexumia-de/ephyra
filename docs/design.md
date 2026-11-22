@@ -47,6 +47,14 @@ widgets. Decision and trade-offs: [Jellyfin look](decisions/jellyfin-style.md).
    at 360 px, more as the window grows. No horizontal carousels:
    Jellyfin's scrolling rows become wrapping grids, and sections with
    more items have "Show All".
+   **Libraries** sort and filter from a menu button in the content
+   header (`view-sort-descending-symbolic`, "Sort and Filter", only on a
+   library, not on Home): Sort By Name, Date Added, Release Date or
+   Rating; Ascending or Descending; Show Only Unplayed and Favorites. A
+   new sort key starts in its natural order (names A to Z, the newest
+   and best rated first). The choice is kept per library in the account
+   file (`library_options`, `ephyra/library.py`); a filter that leaves
+   nothing says "No Matching Items" instead of "Empty Library".
 5. **Indicators like Jellyfin's.** A played item gets a round accent
    badge with a check in the poster's top right corner; a series gets
    its unplayed episode count there; a started item shows its position

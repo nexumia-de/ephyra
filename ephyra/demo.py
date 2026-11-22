@@ -213,6 +213,28 @@ def latest(h, q, p):
     h._json(items[:int(q.get("limit", 12))])
 
 
+# sortBy values the demo understands, as keys of the recorded items. Items
+# without the field (the recordings have no DateCreated) keep the name
+# order; the server's own rules are in its ItemSortBy comparers.
+SORT_KEYS = {"datecreated": lambda i: i.get("DateCreated") or "",
+             "premieredate": lambda i: i.get("PremiereDate")
+             or str(i.get("ProductionYear") or ""),
+             "communityrating": lambda i: i.get("CommunityRating") or 0}
+
+
+def sort_items(found, q):
+    """Episodes and tracks by number, else by name; then by the first
+    sortBy value in sortOrder."""
+    found = sorted(found, key=lambda i: (i.get("IndexNumber") or 0, i["Name"]))
+    first = (q.get("sortby") or "").lower().split(",")[0]
+    descending = (q.get("sortorder") or "").lower().startswith("descending")
+    if first in SORT_KEYS:
+        found.sort(key=SORT_KEYS[first], reverse=descending)
+    elif descending:
+        found.reverse()
+    return found
+
+
 @route("GET", r"/Items")
 def items(h, q, p):
     owner = h.owner
@@ -225,7 +247,12 @@ def items(h, q, p):
         found = owner.children(q.get("parentid"),
                                q.get("recursive") == "true",
                                q.get("includeitemtypes"))
-        found.sort(key=lambda i: (i.get("IndexNumber") or 0, i["Name"]))
+        found = sort_items(found, q)
+    filters = set((q.get("filters") or "").lower().split(","))
+    if "isunplayed" in filters:
+        found = [i for i in found if not i.get("UserData", {}).get("Played")]
+    if "isfavorite" in filters:
+        found = [i for i in found if i.get("UserData", {}).get("IsFavorite")]
     start, limit = int(q.get("startindex", 0)), int(q.get("limit", 100))
     h._json({"Items": found[start:start + limit],
              "TotalRecordCount": len(found), "StartIndex": start})

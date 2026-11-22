@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-22
+* **Update**: [Design](design.md) rule 4, #5: libraries have a Sort and Filter menu (name, date added, release date, rating; ascending or descending; unplayed, favourites), kept per library in the account file. `LibraryView` moved from `browse.py` into the new `ephyra/library.py` with the menu's actions. Server parameters from `ItemsController.GetItems` and `RequestHelpers.GetOrderBy` (jellyfin `0a4ae54`): `sortBy`, `sortOrder` and `filters` are comma lists, one `sortOrder` applies to every `sortBy`. The demo server sorts and filters too; the recordings have no `DateCreated`, so that order is the name order there. UI test added; screenshots at 360×720 (dark) and 1000×700 checked.
+
 ## 2026-11-17
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to `v0.5.0` (commit `e5cccb6`) ([dependencies](dependencies.md)). Its `ConnectionForm` has the "Other Certificate Hosts" row itself (phosh-toolkit#52/#53) and passes the hosts to the setup login too, so the "Proxy Login" group in Preferences, `settings.parse_hosts` and its test are removed; `ConnectionForm.apply()` sets `account.certificate_hosts`. [Connection](connection.md#proxy-login) updated.
 

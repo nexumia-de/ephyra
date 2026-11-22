@@ -6,11 +6,7 @@ from phosh_toolkit import route
 
 from ephyra import NAME, widgets
 from ephyra.connection import CONNECTING, OFFLINE
-
-# Item types a library grid lists, by the library's collection type.
-LIBRARY_TYPES = {"movies": "Movie", "tvshows": "Series",
-                 "music": "MusicAlbum", "boxsets": "BoxSet"}
-PAGE = 60
+from ephyra.library import LibraryView, SortActions, sort_menu
 
 
 def state_text(conn):
@@ -53,8 +49,17 @@ class MainPage(Adw.NavigationPage):
                             tooltip_text="Search")
         search.update_property([Gtk.AccessibleProperty.LABEL], ["Search"])
         search.set_action_name("app.search")
+        # Sort order and filters of the library on screen (library.py).
+        self.sort_actions = SortActions(self.conn, self._on_sort_changed)
+        self.insert_action_group("library", self.sort_actions)
+        self.sort_button = Gtk.MenuButton(
+            icon_name="view-sort-descending-symbolic", menu_model=sort_menu(),
+            tooltip_text="Sort and Filter", visible=False)
+        self.sort_button.update_property([Gtk.AccessibleProperty.LABEL],
+                                         ["Sort and Filter"])
         self.content_header = Adw.HeaderBar()
         self.content_header.pack_end(search)
+        self.content_header.pack_end(self.sort_button)
         content_view = Adw.ToolbarView()
         content_view.add_top_bar(self.content_header)
         content_view.add_top_bar(self.banner)
@@ -117,9 +122,17 @@ class MainPage(Adw.NavigationPage):
             self.content_pages[key] = page
             self.stack.add_named(page, key)
         self.stack.set_visible_child_name(key)
+        self.sort_button.set_visible(key != "home")
+        if key != "home":
+            self.sort_actions.show(key)
         title = "Home" if key == "home" else next(
             v["Name"] for v in self.views if v["Id"] == key)
         self.content.set_title(title)
+
+    def _on_sort_changed(self, key):
+        page = self.content_pages.get(key)
+        if page is not None:
+            page.reload()
 
     def refresh(self):
         """After playback: reload what shows progress."""
@@ -205,64 +218,6 @@ class HomeView(Gtk.Stack):
             self.add_named(Gtk.ScrolledWindow(
                 child=clamp, hscrollbar_policy=Gtk.PolicyType.NEVER), "content")
         self.set_visible_child_name("content")
-
-
-class LibraryView(Gtk.Stack):
-    """All items of a library, a page at a time."""
-
-    def __init__(self, window, view):
-        super().__init__(transition_type=Gtk.StackTransitionType.CROSSFADE)
-        self.window, self.view = window, view
-        self.store = Gio.ListStore.new(widgets.Item)
-        self.total = None
-        self.loading = False
-        grid = widgets.CardGrid(window.images, self.store, window.show_item)
-        scrolled = Gtk.ScrolledWindow(child=grid,
-                                      hscrollbar_policy=Gtk.PolicyType.NEVER)
-        scrolled.connect("edge-reached", self._on_edge)
-        self.add_named(widgets.loading_page(), "loading")
-        self.add_named(scrolled, "content")
-        self.load_more()
-
-    def _on_edge(self, scrolled, position):
-        if position == Gtk.PositionType.BOTTOM:
-            self.load_more()
-
-    def load_more(self):
-        if self.loading or (self.total is not None
-                            and self.store.get_n_items() >= self.total):
-            return
-        self.loading = True
-        ctype = self.view.get("CollectionType")
-        types = LIBRARY_TYPES.get(ctype)
-        jellyfin = self.window.connection.jellyfin
-        self.window.connection.call(
-            jellyfin.items, self._on_loaded, self.view["Id"],
-            self.store.get_n_items(), PAGE, types, bool(types))
-
-    def _on_loaded(self, result, error):
-        self.loading = False
-        if error is not None:
-            if self.store.get_n_items():
-                self.window.toast(str(error))
-                return
-            old = self.get_child_by_name("error")
-            if old:
-                self.remove(old)
-            self.add_named(widgets.error_page("Can't Load the Library",
-                                              str(error), self.load_more), "error")
-            self.set_visible_child_name("error")
-            return
-        self.total = result.get("TotalRecordCount", 0)
-        for data in result.get("Items", []):
-            self.store.append(widgets.Item(data))
-        if not self.store.get_n_items():
-            page = Adw.StatusPage(icon_name=widgets.icon_for(self.view),
-                                  title="Empty Library")
-            self.add_named(page, "empty")
-            self.set_visible_child_name("empty")
-        else:
-            self.set_visible_child_name("content")
 
 
 class SearchPage(Adw.NavigationPage):

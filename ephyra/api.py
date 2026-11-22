@@ -114,12 +114,14 @@ class Jellyfin:
 
     def items(self, parent_id=None, start=0, limit=60, types=None,
               recursive=False, search=None, sort="SortName",
-              order="Ascending"):
-        """{Items, TotalRecordCount}"""
+              order="Ascending", filters=None):
+        """{Items, TotalRecordCount}. `sort`: ItemSortBy values, `filters`:
+        ItemFilter values such as IsUnplayed, both comma-separated."""
         return self.get("/Items", userId=self.user_id, parentId=parent_id,
                         startIndex=start, limit=limit,
                         includeItemTypes=types, recursive=recursive,
                         searchTerm=search, sortBy=sort, sortOrder=order,
+                        filters=filters,
                         fields=FIELDS, imageTypeLimit=1,
                         enableImageTypes="Primary,Backdrop,Thumb")
 

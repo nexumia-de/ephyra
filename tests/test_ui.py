@@ -21,7 +21,7 @@ from phosh_toolkit import connection_form, router  # noqa: E402
 from phosh_toolkit.http import Client  # noqa: E402
 
 from ephyra import connection, settings, setup  # noqa: E402
-from ephyra.demo import PASSWORD  # noqa: E402
+from ephyra.demo import PASSWORD, TOKEN  # noqa: E402
 
 CLIP = Path(__file__).resolve().parent / "data" / "media" / "clip.webm"
 TRACKS = CLIP.with_name("tracks.mkv")
@@ -251,6 +251,76 @@ def test_server_rejecting_the_token_shows_setup(app, demo, monkeypatch):
     window.destroy()
 
 
+
+
+def test_library_sort_and_filters_are_kept_per_library(app, demo, monkeypatch):
+    from gi.repository import GLib
+    from ephyra import keyring
+    from ephyra.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    store = settings.Store()
+    account = store.load()
+    account.remote_url = demo.url
+    account.server_id = demo.library["server"]["Id"]
+    account.user_id = demo.library["user"]["Id"]
+    store.save(account)
+
+    def open_movies():
+        # Stored again each time: a late 401 of an earlier test's
+        # connection clears the shared in-memory keyring.
+        keyring.store(keyring.TOKEN, TOKEN)
+        conn = connection.Connection(store, watch=False)
+        window = Window(app, conn)
+        window.present()
+        main = window.main
+        run_until(lambda: main.views)
+        assert not main.sort_button.get_visible()     # not on Home
+        window.show_view(1)
+        assert main.sort_button.get_visible()
+        movies = main.content_pages[main.views[0]["Id"]]
+        return window, main, movies
+
+    def names(view):
+        return [view.store.get_item(i).data["Name"]
+                for i in range(view.store.get_n_items())]
+
+    window, main, movies = open_movies()
+    run_until(lambda: movies.store.get_n_items() == 8)
+    assert names(movies)[0] == "A Quiet Orbit"
+    actions = main.sort_actions
+    assert actions.get_action_state("sort").get_string() == "SortName"
+
+    # Rating starts with the best rated; the order can be flipped.
+    actions.activate_action("sort", GLib.Variant("s", "CommunityRating"))
+    assert actions.get_action_state("order").get_string() == "Descending"
+    run_until(lambda: names(movies)[:1] == ["Under the Pier"]
+              and movies.store.get_n_items() == 8)
+    actions.activate_action("order", GLib.Variant("s", "Ascending"))
+    run_until(lambda: names(movies)[:1] == ["The Lighthouse Keeper"]
+              and movies.store.get_n_items() == 8)
+
+    # No favourites in the demo library: an explanation, not "empty".
+    actions.activate_action("IsFavorite", None)
+    run_until(lambda: movies.get_visible_child_name() == "empty")
+    assert movies.get_child_by_name("empty").get_title() == "No Matching Items"
+    actions.activate_action("IsFavorite", None)
+    actions.activate_action("IsUnplayed", None)
+    run_until(lambda: movies.get_visible_child_name() == "content"
+              and movies.store.get_n_items() == 7)
+    assert "Paper Boats" not in names(movies)
+    window.destroy()
+
+    # Kept in the account file for this library only.
+    options = store.load().library_options
+    assert list(options) == [main.views[0]["Id"]]
+    assert options[main.views[0]["Id"]] == {
+        "sort": "CommunityRating", "order": "Ascending",
+        "filters": ["IsUnplayed"]}
+    window, main, movies = open_movies()
+    run_until(lambda: movies.store.get_n_items() == 7)
+    assert names(movies)[0] == "The Lighthouse Keeper"
+    assert main.sort_actions.get_action_state("IsUnplayed").get_boolean()
+    window.destroy()
 
 
 def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
