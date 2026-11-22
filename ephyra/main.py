@@ -8,6 +8,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+from phosh_toolkit import release_notes  # noqa: E402
 
 from ephyra import (APP_ID, NAME, NIGHTLY, REPO_URL, SUPPORT_URL,  # noqa: E402
                     VERSION_LABEL)
@@ -128,7 +129,7 @@ SOURCE_METAINFO = (Path(__file__).resolve().parent.parent / "data"
 
 def about_dialog():
     """The About dialog with "What's New" from the installed metainfo
-    (phosh_toolkit.release_notes, toolkit v0.7.0 or newer)."""
+    (phosh_toolkit.release_notes)."""
     dialog = Adw.AboutDialog(
         application_name=NAME,
         application_icon=APP_ID,
@@ -141,12 +142,6 @@ def about_dialog():
                  "affiliated with the Jellyfin project.",
     )
     dialog.add_link("Support Development", SUPPORT_URL)
-    try:
-        from phosh_toolkit import release_notes
-    except ImportError:
-        # The pinned toolkit tag is older than v0.7.0
-        # (docs/owner-checks.md): no "What's New" yet.
-        return dialog
     release_notes.add_to(dialog, APP_ID, SOURCE_METAINFO)
     return dialog
 
