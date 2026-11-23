@@ -51,22 +51,29 @@
   <screenshots>
     <screenshot type="default">
       <caption>Continue watching, next episodes and the newest movies</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/home-phone-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.4.0/home-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Continue watching, next episodes and the newest movies</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/home-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.4.0/home-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>A movie library</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/movies-phone-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.4.0/movies-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>A movie library</caption>
-      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.3.0/movies-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/ephyra/releases/download/v0.4.0/movies-desktop-light.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.4.0" date="2026-11-23">
+      <description>
+        <ul>
+          <li>Home Cinema's main menu has Report a Problem…, which sends your report to GitHub with your own token or opens the prefilled issue form.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-11-22">
       <description>
         <ul>
